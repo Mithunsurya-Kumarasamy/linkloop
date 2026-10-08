@@ -58,10 +58,16 @@ Using an AWS EC2 instance, DigitalOcean Droplet, or Hetzner server is the most r
    ```
 6. **Final Step**: Once your server is running, go back to your Frontend code (`frontend/src/App.tsx`), change the `GATEWAY_URL` to `ws://<YOUR_VPS_IP_ADDRESS>:80`, commit, and Vercel will automatically redeploy!
 
-### Option B: Use Render.com (PaaS)
-If you don't want to manage a Linux server, you can use [Render](https://render.com).
-1. Create a **Web Service** on Render pointing to your `gateway` folder (Environment: Node.js).
-2. Create a **Private Service** on Render pointing to your `tcp-core` folder (Environment: Python).
-3. Set the `DATABASE_URL` environment variable for the Python service.
-4. Change the `TCP_HOST` in your Node gateway to point to the internal Render URL of your Python service instead of `127.0.0.1`.
+### Option B: Use Render.com (PaaS) - 100% Free
+If you don't want to manage a Linux server, you can host the entire backend on [Render](https://render.com) for completely free by running both the Python and Node servers in a single Web Service!
+1. Click **New +** and create a **Web Service** on Render.
+2. Connect your GitHub repository.
+3. **Configuration**:
+   * Root Directory: Leave this blank (root).
+   * Environment: `Node` (Render's Node environments also have Python pre-installed!)
+   * Build Command: `chmod +x start.sh`
+   * Start Command: `./start.sh`
+4. **Environment Variables**:
+   * Add `DATABASE_URL` and paste your Neon DB URL.
+   * Add `TCP_SERVER_HOST` and set it to `127.0.0.1`.
 5. Update your Vercel Frontend to point to the secure WebSocket (`wss://`) URL provided by Render for your Web Service.
