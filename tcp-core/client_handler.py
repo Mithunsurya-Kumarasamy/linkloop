@@ -107,7 +107,7 @@ class ClientHandler:
                     
                     history = get_messages(db, room, limit=20)
                     for h_msg, h_username in reversed(history):
-                        ts = h_msg.timestamp.isoformat() if h_msg.timestamp else None
+                        ts = h_msg.timestamp.isoformat() + "Z" if h_msg.timestamp else None
                         self.send({"type": "MESSAGE", "room": room, "sender": h_username, "content": h_msg.content, "timestamp": ts, "history": True})
 
                 elif msg_type == "JOIN_BY_CODE":
@@ -120,7 +120,7 @@ class ClientHandler:
                         
                         history = get_messages(db, room, limit=20)
                         for h_msg, h_username in reversed(history):
-                            ts = h_msg.timestamp.isoformat() if h_msg.timestamp else None
+                            ts = h_msg.timestamp.isoformat() + "Z" if h_msg.timestamp else None
                             self.send({"type": "MESSAGE", "room": room, "sender": h_username, "content": h_msg.content, "timestamp": ts, "history": True})
                     else:
                         self.send({"type": "ERROR", "message": "Invalid room code"})
@@ -144,7 +144,7 @@ class ClientHandler:
                     if room:
                         content = msg.get("content")
                         db_msg = add_message(db, room, self.username, content)
-                        ts = db_msg.timestamp.isoformat() if db_msg and db_msg.timestamp else datetime.utcnow().isoformat()
+                        ts = db_msg.timestamp.isoformat() + "Z" if db_msg and db_msg.timestamp else datetime.utcnow().isoformat() + "Z"
                         self.room_manager.broadcast(room, self.username, content, ts)
                     else:
                         self.send({"type": "ERROR", "message": "Not in a room"})
