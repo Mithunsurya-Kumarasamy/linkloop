@@ -39,5 +39,7 @@ class LinkLoopServer:
             self.server_socket.close()
 
 if __name__ == "__main__":
-    server = LinkLoopServer(host='127.0.0.1', port=9000)
+    host = os.getenv("TCP_HOST", "0.0.0.0")
+    port = int(os.getenv("TCP_PORT", "9000"))
+    server = LinkLoopServer(host=host, port=port)
     server.start()
