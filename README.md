@@ -1,13 +1,32 @@
 # LinkLoop
 ## A Multiroom TCP-Based Real-Time Chat System
 
-A complete real-time multiroom chat system built on genuine TCP sockets, with a WebSocket gateway and React frontend.
+### Problem Statement
+Modern chat systems abstract away network fundamentals. LinkLoop was built to demonstrate raw TCP socket programming underlying real-time communication.
 
-### Architecture
+### Objectives
+- Demonstrate genuine TCP networking.
+- Support persistent real-time multi-room messaging.
+- Build a modern responsive UI.
+
+### Features
+- Multiroom Chat
+- Broadcast & Isolation
+- Real-time Notifications
+- Message Persistence
+
+### Architecture & Tech Stack
 - Frontend: React + Tailwind CSS
-- Gateway: Node.js WebSocket Gateway
-- TCP Core: Python TCP Socket Server
-- Database: PostgreSQL
+- Gateway: Node.js WebSocket
+- Backend: Python TCP Sockets
+- Database: PostgreSQL (Neon DB)
 
-### Setup
-Please see the `docs/` directory for setup and architecture details.
+### Setup & Running
+See [Deployment](docs/deployment.md) for full instructions.
+1. Populate `.env` with `DATABASE_URL`
+2. `cd tcp-core && .\.venv\Scripts\Activate.ps1 && python server.py`
+3. `cd gateway && npm start`
+4. `cd frontend && npm run dev`
+
+### Networking
+See [Networking](docs/networking.md).
