@@ -1,9 +1,10 @@
 from logger import log
 
 class ClientHandler:
-    def __init__(self, connection, address):
+    def __init__(self, connection, address, server):
         self.connection = connection
         self.address = address
+        self.server = server
 
     def handle(self):
         log.info(f"Handling connection from {self.address}")
@@ -20,3 +21,4 @@ class ClientHandler:
         finally:
             log.info(f"Connection closed for {self.address}")
             self.connection.close()
+            self.server.remove_client(self)
