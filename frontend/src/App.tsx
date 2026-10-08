@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate, Navigate } from 'react-router-dom';
 import { Send, Users, LogOut, Hash, Zap, Key } from 'lucide-react';
 
-const GATEWAY_URL = 'ws://127.0.0.1:8080';
+const GATEWAY_URL = import.meta.env.VITE_GATEWAY_URL || 'ws://127.0.0.1:8080';
 
 const formatTime = (ts: string) => {
   if (!ts) return '';
