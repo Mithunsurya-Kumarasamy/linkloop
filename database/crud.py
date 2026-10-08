@@ -52,6 +52,25 @@ def get_room_by_code(db: Session, code: str):
 def get_room_by_name(db: Session, room_name: str):
     return db.query(Room).filter(Room.name == room_name).first()
 
+def add_user_to_room(db: Session, username: str, room_name: str):
+    user = get_user_by_username(db, username)
+    room = get_room_by_name(db, room_name)
+    if user and room:
+        existing = db.query(RoomMember).filter_by(user_id=user.id, room_id=room.id).first()
+        if not existing:
+            member = RoomMember(user_id=user.id, room_id=room.id)
+            db.add(member)
+            db.commit()
+            return True
+    return False
+
+def get_user_rooms(db: Session, username: str):
+    user = get_user_by_username(db, username)
+    if not user:
+        return []
+    rooms = db.query(Room).join(RoomMember).filter(RoomMember.user_id == user.id).all()
+    return [r.name for r in rooms]
+
 def add_message(db: Session, room_name: str, sender_username: str, content: str):
     room = get_room_by_name(db, room_name)
     user = get_user_by_username(db, sender_username)

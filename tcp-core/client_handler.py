@@ -4,7 +4,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from logger import log
 from protocol import Protocol
-from database.crud import get_db, create_user, get_user_by_username, verify_password, create_room, add_message, get_messages, get_room_by_code
+from database.crud import get_db, create_user, get_user_by_username, verify_password, create_room, add_message, get_messages, get_room_by_code, add_user_to_room, get_user_rooms
 import time
 import string
 import random
@@ -94,6 +94,7 @@ class ClientHandler:
                     room = msg.get("room")
                     code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
                     create_room(db, room, self.username, code)
+                    add_user_to_room(db, self.username, room)
                     if self.room_manager.create_room(room):
                         self.room_manager.join_room(room, self)
                         self.send({"type": "CREATE_OK", "room": room, "code": code})
@@ -102,8 +103,12 @@ class ClientHandler:
                         
                 elif msg_type == "JOIN_ROOM":
                     room = msg.get("room")
-                    self.room_manager.join_room(room, self)
-                    self.send({"type": "JOIN_OK", "room": room})
+                    user_rooms = get_user_rooms(db, self.username)
+                    if room in user_rooms:
+                        self.room_manager.join_room(room, self)
+                        self.send({"type": "JOIN_OK", "room": room})
+                    else:
+                        self.send({"type": "ERROR", "message": "Access denied. Use a join code."})
                     
                     history = get_messages(db, room, limit=20)
                     for h_msg, h_username in reversed(history):
@@ -115,6 +120,7 @@ class ClientHandler:
                     db_room = get_room_by_code(db, code)
                     if db_room:
                         room = db_room.name
+                        add_user_to_room(db, self.username, room)
                         self.room_manager.join_room(room, self)
                         self.send({"type": "JOIN_OK", "room": room, "code": code})
                         
@@ -131,7 +137,7 @@ class ClientHandler:
                     self.send({"type": "LEAVE_OK", "room": room})
                     
                 elif msg_type == "LIST_ROOMS":
-                    rooms = self.room_manager.list_rooms()
+                    rooms = get_user_rooms(db, self.username)
                     self.send({"type": "ROOM_LIST", "rooms": rooms})
                     
                 elif msg_type == "LIST_USERS":
