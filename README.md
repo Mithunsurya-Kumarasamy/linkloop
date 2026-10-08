@@ -7,7 +7,7 @@ Instead, LinkLoop is built from scratch using raw **TCP Sockets** in Python, bri
 
 ---
 
-## 🏗 System Architecture
+## System Architecture
 
 LinkLoop utilizes a three-tier architecture to bridge the gap between traditional raw TCP sockets and modern web browsers:
 
@@ -26,7 +26,7 @@ LinkLoop utilizes a three-tier architecture to bridge the gap between traditiona
 
 ---
 
-## ✨ Core Features
+## Core Features
 
 - **Raw TCP Socket Programming**: Custom protocol built from scratch using Python's `socket` library.
 - **Private Room Visibility**: Rooms are completely invisible unless you are the creator or have explicitly joined using a secret 6-character room code.
@@ -36,7 +36,7 @@ LinkLoop utilizes a three-tier architecture to bridge the gap between traditiona
 
 ---
 
-## 🔌 The Custom TCP Protocol
+## The Custom TCP Protocol
 
 Communication between the Gateway and the TCP Core is done via newline-delimited JSON payloads.
 
@@ -52,7 +52,7 @@ Communication between the Gateway and the TCP Core is done via newline-delimited
 
 ---
 
-## 🚀 Local Development Setup
+## Local Development Setup
 
 To run LinkLoop locally on your machine, you must start the three components in order:
 
@@ -92,6 +92,6 @@ npm run dev
 
 ---
 
-## 🌍 Deployment
+## Deployment
 
 Since this project avoids Docker for strict native execution, see the `DEPLOYMENT.md` file for step-by-step instructions on deploying the Frontend to Vercel and the Backend components natively to a DigitalOcean Droplet or AWS EC2 instance.
