@@ -1,9 +1,14 @@
 import socket
 import threading
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from config import HOST, PORT
 from logger import log
 from client_handler import ClientHandler
 from room_manager import RoomManager
+from database.models import init_db
 
 class LinkLoopServer:
     def __init__(self, host=HOST, port=PORT):
@@ -12,6 +17,9 @@ class LinkLoopServer:
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.room_manager = RoomManager()
+        
+        log.info("Initializing database...")
+        init_db()
 
     def start(self):
         self.server_socket.bind((self.host, self.port))
