@@ -6,6 +6,8 @@ from logger import log
 from protocol import Protocol
 from database.crud import get_db, create_user, get_user_by_username, verify_password, create_room, add_message, get_messages
 
+import time
+
 class ClientHandler:
     def __init__(self, connection, address, room_manager):
         self.connection = connection
@@ -13,6 +15,8 @@ class ClientHandler:
         self.room_manager = room_manager
         self.username = None
         self.current_room = None
+        self.last_msg_time = time.time()
+        self.msg_count = 0
 
     def handle(self):
         log.info(f"Connection from {self.address}")
@@ -38,6 +42,15 @@ class ClientHandler:
             log.info(f"Connection closed for {self.address}")
 
     def process_message(self, message_str):
+        now = time.time()
+        if now - self.last_msg_time > 1:
+            self.msg_count = 0
+            self.last_msg_time = now
+        self.msg_count += 1
+        if self.msg_count > 10:
+            self.send({"type": "ERROR", "message": "Rate limit exceeded"})
+            return
+
         try:
             msg = Protocol.decode(message_str.encode('utf-8'))
             if not msg: return
