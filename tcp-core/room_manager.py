@@ -85,3 +85,15 @@ class RoomManager:
                     client.connection.sendall(encoded)
                 except Exception:
                     pass
+
+    def private_message(self, sender_username, recipient_username, message):
+        with self.lock:
+            recipient_client = self.usernames.get(recipient_username)
+        if recipient_client:
+            msg_payload = {"type": "PRIVATE_MESSAGE", "sender": sender_username, "content": message}
+            encoded = Protocol.encode(msg_payload)
+            try:
+                recipient_client.connection.sendall(encoded)
+            except Exception as e:
+                log.error(f"Failed to send PM to {recipient_username}: {e}")
+

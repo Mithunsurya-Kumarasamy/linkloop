@@ -18,6 +18,9 @@ class ClientHandler:
                 if not data:
                     break
                 buffer += data.decode('utf-8')
+                if len(buffer) > 8192:
+                    self.send({"type": "ERROR", "message": "Buffer overflow"})
+                    break
                 while '\n' in buffer:
                     line, buffer = buffer.split('\n', 1)
                     if line.strip():
@@ -35,26 +38,70 @@ class ClientHandler:
             if not msg: return
             msg_type = msg.get("type")
             
-            if msg_type == "REGISTER":
+            if msg_type == "AUTH":
+                username = msg.get("username")
+                if self.room_manager.register_user(username, self):
+                    self.send({"type": "AUTH_OK"})
+                else:
+                    self.send({"type": "ERROR", "message": "Username taken"})
+            elif msg_type == "REGISTER":
                 username = msg.get("username")
                 if self.room_manager.register_user(username, self):
                     self.send({"type": "REGISTER_OK"})
                 else:
                     self.send({"type": "ERROR", "message": "Username taken"})
+            elif not self.username:
+                self.send({"type": "ERROR", "message": "Not authenticated"})
+                return
+            elif msg_type == "CREATE_ROOM":
+                room = msg.get("room")
+                if self.room_manager.create_room(room):
+                    self.send({"type": "CREATE_OK", "room": room})
+                else:
+                    self.send({"type": "ERROR", "message": "Room exists"})
             elif msg_type == "JOIN_ROOM":
                 room = msg.get("room")
-                if self.username:
-                    self.room_manager.join_room(room, self)
-                    self.send({"type": "JOIN_OK", "room": room})
+                self.room_manager.join_room(room, self)
+                self.send({"type": "JOIN_OK", "room": room})
+            elif msg_type == "LEAVE_ROOM":
+                room = msg.get("room")
+                self.room_manager.leave_room(room, self)
+                self.send({"type": "LEAVE_OK", "room": room})
+            elif msg_type == "LIST_ROOMS":
+                rooms = self.room_manager.list_rooms()
+                self.send({"type": "ROOM_LIST", "rooms": rooms})
+            elif msg_type == "LIST_USERS":
+                room = msg.get("room")
+                users = self.room_manager.list_users(room)
+                self.send({"type": "USER_LIST", "room": room, "users": users})
             elif msg_type == "MESSAGE":
-                if self.username and self.current_room:
+                room = msg.get("room") or self.current_room
+                if room:
                     content = msg.get("content")
-                    self.room_manager.broadcast(self.current_room, self.username, content)
+                    self.room_manager.broadcast(room, self.username, content)
+                else:
+                    self.send({"type": "ERROR", "message": "Not in a room"})
+            elif msg_type == "PRIVATE_MESSAGE":
+                recipient = msg.get("recipient")
+                content = msg.get("content")
+                self.room_manager.private_message(self.username, recipient, content)
+            elif msg_type == "PING":
+                self.send({"type": "PONG"})
+            elif msg_type == "DISCONNECT":
+                self.connection.close()
+            elif msg_type not in ["AUTH", "REGISTER"]:
+                self.send({"type": "ERROR", "message": "Unknown command"})
+                
+        except ValueError as ve:
+            self.send({"type": "ERROR", "message": str(ve)})
         except Exception as e:
             log.error(f"Message parsing error: {e}")
+            self.send({"type": "ERROR", "message": "Invalid protocol"})
 
     def send(self, msg_dict):
         try:
-            self.connection.sendall(Protocol.encode(msg_dict))
+            encoded = Protocol.encode(msg_dict)
+            if encoded:
+                self.connection.sendall(encoded)
         except Exception as e:
             log.error(f"Send error: {e}")
