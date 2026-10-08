@@ -1,7 +1,0 @@
-version: '3.8'
-
-services:
-  # Services will be added later if needed. PostgreSQL is hosted on Neon DB.
-  gateway:
-    image: node:18-alpine
-    # to be filled
