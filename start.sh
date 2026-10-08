@@ -3,8 +3,8 @@
 
 echo "Starting LinkLoop TCP Core..."
 cd tcp-core
-pip install -r requirements.txt
-python server.py &
+python3 -m pip install -r requirements.txt
+python3 server.py 2>&1 &
 TCP_PID=$!
 
 echo "Starting LinkLoop Gateway..."
