@@ -94,6 +94,7 @@ class ClientHandler:
                     code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
                     create_room(db, room, self.username, code)
                     if self.room_manager.create_room(room):
+                        self.room_manager.join_room(room, self)
                         self.send({"type": "CREATE_OK", "room": room, "code": code})
                     else:
                         self.send({"type": "ERROR", "message": "Room exists in memory"})
