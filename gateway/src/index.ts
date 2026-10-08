@@ -1,8 +1,12 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import { TCPClient } from './tcp_client';
+import * as dotenv from 'dotenv';
+import * as path from 'path';
+
+dotenv.config({ path: path.join(__dirname, '../../.env') });
 
 const PORT = parseInt(process.env.GATEWAY_PORT || '8080');
-const TCP_HOST = process.env.TCP_SERVER_HOST || '127.0.0.1';
+const TCP_HOST = process.env.TCP_SERVER_HOST === 'tcp-core' ? '127.0.0.1' : (process.env.TCP_SERVER_HOST || '127.0.0.1');
 const TCP_PORT = parseInt(process.env.TCP_SERVER_PORT || '9000');
 
 const wss = new WebSocketServer({ port: PORT });
