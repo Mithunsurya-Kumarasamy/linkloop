@@ -8,6 +8,7 @@ from database.crud import get_db, create_user, get_user_by_username, verify_pass
 import time
 import string
 import random
+from datetime import datetime
 
 class ClientHandler:
     def __init__(self, connection, address, room_manager):
@@ -106,7 +107,8 @@ class ClientHandler:
                     
                     history = get_messages(db, room, limit=20)
                     for h_msg, h_username in reversed(history):
-                        self.send({"type": "MESSAGE", "room": room, "sender": h_username, "content": h_msg.content, "history": True})
+                        ts = h_msg.timestamp.isoformat() if h_msg.timestamp else None
+                        self.send({"type": "MESSAGE", "room": room, "sender": h_username, "content": h_msg.content, "timestamp": ts, "history": True})
 
                 elif msg_type == "JOIN_BY_CODE":
                     code = msg.get("code")
@@ -118,7 +120,8 @@ class ClientHandler:
                         
                         history = get_messages(db, room, limit=20)
                         for h_msg, h_username in reversed(history):
-                            self.send({"type": "MESSAGE", "room": room, "sender": h_username, "content": h_msg.content, "history": True})
+                            ts = h_msg.timestamp.isoformat() if h_msg.timestamp else None
+                            self.send({"type": "MESSAGE", "room": room, "sender": h_username, "content": h_msg.content, "timestamp": ts, "history": True})
                     else:
                         self.send({"type": "ERROR", "message": "Invalid room code"})
                         
@@ -140,8 +143,9 @@ class ClientHandler:
                     room = msg.get("room") or self.current_room
                     if room:
                         content = msg.get("content")
-                        add_message(db, room, self.username, content)
-                        self.room_manager.broadcast(room, self.username, content)
+                        db_msg = add_message(db, room, self.username, content)
+                        ts = db_msg.timestamp.isoformat() if db_msg and db_msg.timestamp else datetime.utcnow().isoformat()
+                        self.room_manager.broadcast(room, self.username, content, ts)
                     else:
                         self.send({"type": "ERROR", "message": "Not in a room"})
                         

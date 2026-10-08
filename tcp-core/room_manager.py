@@ -61,13 +61,15 @@ class RoomManager:
                 return [c.username for c in self.rooms[room_name]]
             return []
 
-    def broadcast(self, room_name, sender_username, message):
+    def broadcast(self, room_name, sender_username, message, timestamp=None):
         with self.lock:
             if room_name not in self.rooms:
                 return
             members = self.rooms[room_name]
         
         msg_payload = {"type": "MESSAGE", "room": room_name, "sender": sender_username, "content": message}
+        if timestamp:
+            msg_payload["timestamp"] = timestamp
         encoded = Protocol.encode(msg_payload)
         for client in members:
             try:
