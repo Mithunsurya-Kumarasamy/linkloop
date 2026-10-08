@@ -3,6 +3,7 @@ import threading
 from config import HOST, PORT
 from logger import log
 from client_handler import ClientHandler
+from room_manager import RoomManager
 
 class LinkLoopServer:
     def __init__(self, host=HOST, port=PORT):
@@ -10,19 +11,7 @@ class LinkLoopServer:
         self.port = port
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.clients_lock = threading.Lock()
-        self.clients = set()
-
-    def add_client(self, handler):
-        with self.clients_lock:
-            self.clients.add(handler)
-        log.info(f"Client added. Total clients: {len(self.clients)}")
-
-    def remove_client(self, handler):
-        with self.clients_lock:
-            if handler in self.clients:
-                self.clients.remove(handler)
-        log.info(f"Client removed. Total clients: {len(self.clients)}")
+        self.room_manager = RoomManager()
 
     def start(self):
         self.server_socket.bind((self.host, self.port))
@@ -32,10 +21,7 @@ class LinkLoopServer:
         try:
             while True:
                 conn, addr = self.server_socket.accept()
-                log.info(f"Accepted connection from {addr}")
-                handler = ClientHandler(conn, addr, self)
-                self.add_client(handler)
-                
+                handler = ClientHandler(conn, addr, self.room_manager)
                 client_thread = threading.Thread(target=handler.handle)
                 client_thread.daemon = True
                 client_thread.start()
