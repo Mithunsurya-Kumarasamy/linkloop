@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate, Navigate } from 'react-router-dom';
-import { Send, Users, LogOut, Hash, Key } from 'lucide-react';
+import { Send, Users, LogOut, Hash, Key, ArrowLeft } from 'lucide-react';
 
 const GATEWAY_URL = import.meta.env.VITE_GATEWAY_URL || 'ws://127.0.0.1:8080';
 
@@ -231,9 +231,9 @@ function Dashboard({ ws, username }: { ws: WebSocket | null, username: string })
   };
 
   return (
-    <div className="flex w-full h-full">
+    <div className="flex w-full h-full overflow-hidden">
       {/* Sidebar */}
-      <div className="w-[280px] bg-black border-r border-[#262626] flex flex-col">
+      <div className={`${currentRoom ? 'hidden md:flex' : 'flex'} w-full md:w-[280px] bg-black border-r border-[#262626] flex-col shrink-0`}>
         <div className="p-4">
           <h2 className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-3">Workspaces</h2>
           
@@ -272,8 +272,8 @@ function Dashboard({ ws, username }: { ws: WebSocket | null, username: string })
       </div>
 
       {/* Chat Area */}
-      <div className="flex-1 bg-[#111111] flex flex-col relative">
-        {currentRoom ? <ChatRoom ws={ws} room={currentRoom} code={currentCode} username={username} /> : (
+      <div className={`${!currentRoom ? 'hidden md:flex' : 'flex'} flex-1 bg-[#111111] flex-col relative overflow-hidden`}>
+        {currentRoom ? <ChatRoom ws={ws} room={currentRoom} code={currentCode} username={username} onBack={() => setCurrentRoom(null)} /> : (
           <div className="m-auto text-center max-w-md">
             <div className="bg-black w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-[#262626]">
               <LinkLogo className="text-slate-600 w-8 h-8" />
@@ -287,7 +287,7 @@ function Dashboard({ ws, username }: { ws: WebSocket | null, username: string })
   );
 }
 
-function ChatRoom({ ws, room, code, username }: { ws: WebSocket | null, room: string, code: string | null, username: string }) {
+function ChatRoom({ ws, room, code, username, onBack }: { ws: WebSocket | null, room: string, code: string | null, username: string, onBack: () => void }) {
   const [messages, setMessages] = useState<any[]>([]);
   const [users, setUsers] = useState<string[]>([]);
   const [input, setInput] = useState('');
@@ -327,8 +327,11 @@ function ChatRoom({ ws, room, code, username }: { ws: WebSocket | null, room: st
 
   return (
     <>
-      <div className="px-6 py-4 border-b border-[#262626] flex justify-between items-center bg-[#111111] z-20 shadow-sm">
-        <div className="flex items-center gap-3">
+      <div className="px-4 py-3 md:px-6 md:py-4 border-b border-[#262626] flex justify-between items-center bg-[#111111] z-20 shadow-sm shrink-0">
+        <div className="flex items-center gap-2 md:gap-3">
+          <button onClick={onBack} className="md:hidden text-slate-400 hover:text-white transition-colors mr-1">
+            <ArrowLeft size={20} />
+          </button>
           <div className="bg-[#1a1a1a] p-1.5 rounded text-slate-400">
             <Hash size={16} />
           </div>

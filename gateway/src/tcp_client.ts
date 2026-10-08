@@ -9,6 +9,7 @@ export class TCPClient {
     constructor(ws: WebSocket, host: string, port: number) {
         this.ws = ws;
         this.client = new net.Socket();
+        this.client.setNoDelay(true);
 
         this.client.connect(port, host, () => {
             console.log(`Connected to TCP Core at ${host}:${port}`);
