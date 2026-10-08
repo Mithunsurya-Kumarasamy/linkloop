@@ -4,9 +4,10 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from logger import log
 from protocol import Protocol
-from database.crud import get_db, create_user, get_user_by_username, verify_password, create_room, add_message, get_messages
-
+from database.crud import get_db, create_user, get_user_by_username, verify_password, create_room, add_message, get_messages, get_room_by_code
 import time
+import string
+import random
 
 class ClientHandler:
     def __init__(self, connection, address, room_manager):
@@ -90,9 +91,10 @@ class ClientHandler:
                 
                 elif msg_type == "CREATE_ROOM":
                     room = msg.get("room")
-                    create_room(db, room, self.username)
+                    code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+                    create_room(db, room, self.username, code)
                     if self.room_manager.create_room(room):
-                        self.send({"type": "CREATE_OK", "room": room})
+                        self.send({"type": "CREATE_OK", "room": room, "code": code})
                     else:
                         self.send({"type": "ERROR", "message": "Room exists in memory"})
                         
@@ -104,6 +106,20 @@ class ClientHandler:
                     history = get_messages(db, room, limit=20)
                     for h_msg, h_username in reversed(history):
                         self.send({"type": "MESSAGE", "room": room, "sender": h_username, "content": h_msg.content, "history": True})
+
+                elif msg_type == "JOIN_BY_CODE":
+                    code = msg.get("code")
+                    db_room = get_room_by_code(db, code)
+                    if db_room:
+                        room = db_room.name
+                        self.room_manager.join_room(room, self)
+                        self.send({"type": "JOIN_OK", "room": room, "code": code})
+                        
+                        history = get_messages(db, room, limit=20)
+                        for h_msg, h_username in reversed(history):
+                            self.send({"type": "MESSAGE", "room": room, "sender": h_username, "content": h_msg.content, "history": True})
+                    else:
+                        self.send({"type": "ERROR", "message": "Invalid room code"})
                         
                 elif msg_type == "LEAVE_ROOM":
                     room = msg.get("room")

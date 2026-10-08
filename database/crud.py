@@ -30,13 +30,13 @@ def create_user(db: Session, username: str, password: str):
 def get_user_by_username(db: Session, username: str):
     return db.query(User).filter(User.username == username).first()
 
-def create_room(db: Session, room_name: str, owner_username: str = None):
+def create_room(db: Session, room_name: str, owner_username: str = None, code: str = None):
     owner_id = None
     if owner_username:
         user = get_user_by_username(db, owner_username)
         if user:
             owner_id = user.id
-    db_room = Room(name=room_name, owner_id=owner_id)
+    db_room = Room(name=room_name, owner_id=owner_id, code=code)
     db.add(db_room)
     try:
         db.commit()
@@ -45,6 +45,9 @@ def create_room(db: Session, room_name: str, owner_username: str = None):
     except Exception:
         db.rollback()
         return None
+
+def get_room_by_code(db: Session, code: str):
+    return db.query(Room).filter(Room.code == code).first()
 
 def get_room_by_name(db: Session, room_name: str):
     return db.query(Room).filter(Room.name == room_name).first()

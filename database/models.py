@@ -24,6 +24,7 @@ class Room(Base):
     __tablename__ = 'rooms'
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(50), unique=True, index=True, nullable=False)
+    code = Column(String(10), unique=True, index=True, nullable=True)
     owner_id = Column(Integer, ForeignKey('users.id'), nullable=True)
     owner = relationship("User")
 

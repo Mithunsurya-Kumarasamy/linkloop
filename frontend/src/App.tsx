@@ -128,7 +128,9 @@ function Login({ ws, setUser }: { ws: WebSocket | null, setUser: (u: string) => 
 function Dashboard({ ws, username }: { ws: WebSocket | null, username: string }) {
   const [rooms, setRooms] = useState<string[]>([]);
   const [currentRoom, setCurrentRoom] = useState<string | null>(null);
+  const [currentCode, setCurrentCode] = useState<string | null>(null);
   const [newRoom, setNewRoom] = useState('');
+  const [joinCode, setJoinCode] = useState('');
 
   useEffect(() => {
     if (!ws) return;
@@ -140,6 +142,7 @@ function Dashboard({ ws, username }: { ws: WebSocket | null, username: string })
         setRooms(data.rooms);
       } else if (data.type === 'CREATE_OK' || data.type === 'JOIN_OK') {
         setCurrentRoom(data.room);
+        setCurrentCode(data.code || null);
         ws.send(JSON.stringify({ type: 'LIST_ROOMS' }));
       }
     };
@@ -159,15 +162,27 @@ function Dashboard({ ws, username }: { ws: WebSocket | null, username: string })
     }
   };
 
+  const joinByCode = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (joinCode.trim()) {
+      ws?.send(JSON.stringify({ type: 'JOIN_BY_CODE', code: joinCode.trim().toUpperCase() }));
+      setJoinCode('');
+    }
+  };
+
   return (
     <div className="flex w-full h-full">
       {/* Sidebar */}
       <div className="w-64 bg-white border-r border-slate-200 flex flex-col">
         <div className="p-4 border-b border-slate-200">
           <h2 className="font-semibold text-slate-800 mb-4">Rooms</h2>
-          <form onSubmit={createRoom} className="flex gap-2">
+          <form onSubmit={createRoom} className="flex gap-2 mb-2">
             <input type="text" placeholder="New room..." value={newRoom} onChange={e => setNewRoom(e.target.value)} className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 outline-none" />
             <button type="submit" className="bg-slate-800 text-white px-3 py-1.5 rounded text-sm hover:bg-slate-700">+</button>
+          </form>
+          <form onSubmit={joinByCode} className="flex gap-2">
+            <input type="text" placeholder="Room code..." value={joinCode} onChange={e => setJoinCode(e.target.value.toUpperCase())} className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 outline-none uppercase" />
+            <button type="submit" className="bg-blue-600 text-white px-3 py-1.5 rounded text-sm hover:bg-blue-700">Join</button>
           </form>
         </div>
         <div className="flex-1 overflow-y-auto p-2">
@@ -181,7 +196,7 @@ function Dashboard({ ws, username }: { ws: WebSocket | null, username: string })
 
       {/* Chat Area */}
       <div className="flex-1 flex flex-col bg-slate-50">
-        {currentRoom ? <ChatRoom ws={ws} room={currentRoom} username={username} /> : (
+        {currentRoom ? <ChatRoom ws={ws} room={currentRoom} code={currentCode} username={username} /> : (
           <div className="m-auto text-center text-slate-400">
             <MessageSquare size={48} className="mx-auto mb-4 opacity-50" />
             <p>Select a room to start chatting</p>
@@ -192,7 +207,7 @@ function Dashboard({ ws, username }: { ws: WebSocket | null, username: string })
   );
 }
 
-function ChatRoom({ ws, room, username }: { ws: WebSocket | null, room: string, username: string }) {
+function ChatRoom({ ws, room, code, username }: { ws: WebSocket | null, room: string, code: string | null, username: string }) {
   const [messages, setMessages] = useState<any[]>([]);
   const [users, setUsers] = useState<string[]>([]);
   const [input, setInput] = useState('');
@@ -233,7 +248,14 @@ function ChatRoom({ ws, room, username }: { ws: WebSocket | null, room: string, 
   return (
     <div className="flex flex-col h-full w-full relative">
       <div className="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center shadow-sm z-10">
-        <h3 className="font-semibold text-lg text-slate-800"># {room}</h3>
+        <div className="flex items-center gap-4">
+          <h3 className="font-semibold text-lg text-slate-800"># {room}</h3>
+          {code && (
+            <div className="bg-slate-100 text-slate-600 px-3 py-1 rounded-md text-sm font-mono border border-slate-200 flex items-center gap-2" title="Share this code for others to join">
+              Code: <span className="font-bold text-slate-800">{code}</span>
+            </div>
+          )}
+        </div>
         <div className="flex items-center gap-2 text-sm text-slate-500">
           <Users size={16} /> {users.length} online
         </div>
