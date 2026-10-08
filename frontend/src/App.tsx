@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate, Navigate } from 'react-router-dom';
-import { Send, Users, LogOut, MessageSquare } from 'lucide-react';
+import { Send, Users, LogOut, MessageSquare, Hash, Zap, Key } from 'lucide-react';
 
 const GATEWAY_URL = 'ws://127.0.0.1:8080';
 
@@ -32,20 +32,27 @@ function App() {
 
   return (
     <Router>
-      <div className="min-h-screen bg-slate-100 font-sans flex flex-col">
-        <header className="bg-white shadow-sm px-6 py-4 flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <MessageSquare className="text-blue-600" />
-            <h1 className="text-xl font-bold text-slate-800">LinkLoop</h1>
+      <div className="min-h-screen bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-indigo-900 via-slate-900 to-black font-sans flex flex-col text-slate-100 selection:bg-indigo-500/30">
+        <header className="glass-panel px-6 py-4 flex justify-between items-center sticky top-0 z-50">
+          <div className="flex items-center gap-3">
+            <div className="bg-gradient-to-br from-indigo-500 to-purple-600 p-2 rounded-xl shadow-lg shadow-indigo-500/20">
+              <MessageSquare className="text-white w-5 h-5" />
+            </div>
+            <h1 className="text-2xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-indigo-200 via-purple-200 to-indigo-200">
+              LinkLoop
+            </h1>
           </div>
-          <div className="flex items-center gap-4">
-            <span className={`text-xs px-2 py-1 rounded-full ${status === 'CONNECTED' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-              {status}
-            </span>
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-2 bg-slate-800/50 px-3 py-1.5 rounded-full border border-white/5">
+              <div className={`w-2 h-2 rounded-full animate-pulse ${status === 'CONNECTED' ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]' : 'bg-rose-400 shadow-[0_0_8px_rgba(251,113,133,0.8)]'}`}></div>
+              <span className="text-xs font-semibold tracking-wider text-slate-300">
+                {status}
+              </span>
+            </div>
             {user && (
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium">{user}</span>
-                <button onClick={() => { setUser(null); ws?.send(JSON.stringify({type: 'DISCONNECT'})); }} className="text-slate-500 hover:text-slate-800">
+              <div className="flex items-center gap-4">
+                <span className="text-sm font-semibold text-indigo-200">{user}</span>
+                <button onClick={() => { setUser(null); ws?.send(JSON.stringify({type: 'DISCONNECT'})); }} className="text-slate-400 hover:text-rose-400 transition-colors p-1.5 rounded-lg hover:bg-rose-500/10">
                   <LogOut size={18} />
                 </button>
               </div>
@@ -53,7 +60,7 @@ function App() {
           </div>
         </header>
 
-        <main className="flex-1 flex overflow-hidden">
+        <main className="flex-1 flex overflow-hidden p-6 max-w-[1600px] w-full mx-auto gap-6">
           <Routes>
             <Route path="/" element={user ? <Navigate to="/dashboard" /> : <Login ws={ws} setUser={setUser} />} />
             <Route path="/dashboard" element={user ? <Dashboard ws={ws} username={user} /> : <Navigate to="/" />} />
@@ -99,28 +106,52 @@ function Login({ ws, setUser }: { ws: WebSocket | null, setUser: (u: string) => 
   };
 
   return (
-    <div className="m-auto w-full max-w-md p-8 bg-white rounded-xl shadow-lg border border-slate-200">
-      <h2 className="text-2xl font-bold text-center mb-6">{isRegister ? 'Create Account' : 'Welcome Back'}</h2>
-      {error && <div className="mb-4 p-3 bg-red-50 text-red-600 rounded-lg text-sm">{error}</div>}
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">Username</label>
-          <input type="text" required value={username} onChange={e => setUsername(e.target.value)} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" />
+    <div className="m-auto w-full max-w-md">
+      <div className="glass-panel p-10 rounded-3xl shadow-2xl relative overflow-hidden">
+        {/* Decorative elements */}
+        <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+        <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2"></div>
+        
+        <div className="relative z-10">
+          <div className="flex justify-center mb-8">
+             <div className="bg-gradient-to-br from-indigo-500 to-purple-600 p-4 rounded-2xl shadow-xl shadow-indigo-500/20">
+              <Zap className="text-white w-8 h-8" />
+            </div>
+          </div>
+          <h2 className="text-3xl font-extrabold text-center mb-8 text-white">{isRegister ? 'Join the Loop' : 'Welcome Back'}</h2>
+          
+          {error && (
+            <div className="mb-6 p-4 bg-rose-500/10 border border-rose-500/20 text-rose-300 rounded-xl text-sm font-medium flex items-center justify-center">
+              {error}
+            </div>
+          )}
+          
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div>
+              <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">Username</label>
+              <input type="text" required value={username} onChange={e => setUsername(e.target.value)} 
+                className="w-full px-4 py-3 bg-slate-900/50 border border-white/10 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none text-white transition-all placeholder:text-slate-600" 
+                placeholder="Enter your username" />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">Password</label>
+              <input type="password" required value={password} onChange={e => setPassword(e.target.value)} 
+                className="w-full px-4 py-3 bg-slate-900/50 border border-white/10 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none text-white transition-all placeholder:text-slate-600" 
+                placeholder="••••••••" />
+            </div>
+            <button type="submit" 
+              className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-bold py-3.5 rounded-xl hover:shadow-[0_0_20px_rgba(99,102,241,0.4)] hover:-translate-y-0.5 transition-all duration-200 mt-2">
+              {isRegister ? 'Create Account' : 'Sign In'}
+            </button>
+          </form>
+          
+          <div className="mt-8 text-center">
+            <button onClick={() => setIsRegister(!isRegister)} className="text-slate-400 text-sm font-medium hover:text-white transition-colors">
+              {isRegister ? 'Already have an account? Sign In' : "Don't have an account? Sign Up"}
+            </button>
+          </div>
         </div>
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">Password</label>
-          <input type="password" required value={password} onChange={e => setPassword(e.target.value)} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" />
-        </div>
-        <button type="submit" className="w-full bg-blue-600 text-white font-medium py-2 rounded-lg hover:bg-blue-700 transition">
-          {isRegister ? 'Sign Up' : 'Sign In'}
-        </button>
-      </form>
-      <p className="mt-4 text-center text-sm text-slate-600">
-        {isRegister ? 'Already have an account?' : "Don't have an account?"}{' '}
-        <button onClick={() => setIsRegister(!isRegister)} className="text-blue-600 font-medium hover:underline">
-          {isRegister ? 'Sign In' : 'Sign Up'}
-        </button>
-      </p>
+      </div>
     </div>
   );
 }
@@ -171,35 +202,55 @@ function Dashboard({ ws, username }: { ws: WebSocket | null, username: string })
   };
 
   return (
-    <div className="flex w-full h-full">
+    <div className="flex w-full h-full gap-6">
       {/* Sidebar */}
-      <div className="w-64 bg-white border-r border-slate-200 flex flex-col">
-        <div className="p-4 border-b border-slate-200">
-          <h2 className="font-semibold text-slate-800 mb-4">Rooms</h2>
-          <form onSubmit={createRoom} className="flex gap-2 mb-2">
-            <input type="text" placeholder="New room..." value={newRoom} onChange={e => setNewRoom(e.target.value)} className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 outline-none" />
-            <button type="submit" className="bg-slate-800 text-white px-3 py-1.5 rounded text-sm hover:bg-slate-700">+</button>
+      <div className="w-72 glass-panel rounded-3xl flex flex-col overflow-hidden">
+        <div className="p-6 border-b border-white/5">
+          <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-6">Explore Rooms</h2>
+          
+          <form onSubmit={createRoom} className="mb-4 relative">
+            <input type="text" placeholder="Create new room..." value={newRoom} onChange={e => setNewRoom(e.target.value)} 
+              className="w-full bg-slate-900/50 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none pr-10 transition-all placeholder:text-slate-600" />
+            <button type="submit" className="absolute right-2 top-1/2 -translate-y-1/2 text-indigo-400 hover:text-indigo-300 p-1">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            </button>
           </form>
-          <form onSubmit={joinByCode} className="flex gap-2">
-            <input type="text" placeholder="Room code..." value={joinCode} onChange={e => setJoinCode(e.target.value.toUpperCase())} className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 outline-none uppercase" />
-            <button type="submit" className="bg-blue-600 text-white px-3 py-1.5 rounded text-sm hover:bg-blue-700">Join</button>
+          
+          <form onSubmit={joinByCode} className="relative">
+            <input type="text" placeholder="Got a code?" value={joinCode} onChange={e => setJoinCode(e.target.value.toUpperCase())} 
+              className="w-full bg-slate-900/50 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none pr-10 uppercase transition-all placeholder:text-slate-600 placeholder:normal-case" />
+            <button type="submit" className="absolute right-2 top-1/2 -translate-y-1/2 text-indigo-400 hover:text-indigo-300 p-1">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>
+            </button>
           </form>
         </div>
-        <div className="flex-1 overflow-y-auto p-2">
+        
+        <div className="flex-1 overflow-y-auto p-4 space-y-1.5">
           {rooms.map(r => (
-            <button key={r} onClick={() => joinRoom(r)} className={`w-full text-left px-4 py-2 rounded-lg text-sm mb-1 transition ${currentRoom === r ? 'bg-blue-50 text-blue-700 font-medium' : 'text-slate-600 hover:bg-slate-50'}`}>
-              # {r}
+            <button key={r} onClick={() => joinRoom(r)} 
+              className={`w-full text-left px-4 py-3 rounded-xl text-sm font-medium transition-all flex items-center gap-3
+                ${currentRoom === r 
+                  ? 'bg-gradient-to-r from-indigo-500/20 to-purple-500/20 text-indigo-200 border border-indigo-500/30 shadow-[inset_0_0_20px_rgba(99,102,241,0.1)]' 
+                  : 'text-slate-400 hover:bg-white/5 hover:text-slate-200 border border-transparent'}`}>
+              <Hash size={16} className={currentRoom === r ? 'text-indigo-400' : 'text-slate-600'} />
+              {r}
             </button>
           ))}
+          {rooms.length === 0 && (
+            <div className="text-center text-slate-600 text-sm p-4">No rooms available. Create one!</div>
+          )}
         </div>
       </div>
 
       {/* Chat Area */}
-      <div className="flex-1 flex flex-col bg-slate-50">
+      <div className="flex-1 glass-panel rounded-3xl overflow-hidden flex flex-col relative shadow-2xl shadow-indigo-900/20">
         {currentRoom ? <ChatRoom ws={ws} room={currentRoom} code={currentCode} username={username} /> : (
-          <div className="m-auto text-center text-slate-400">
-            <MessageSquare size={48} className="mx-auto mb-4 opacity-50" />
-            <p>Select a room to start chatting</p>
+          <div className="m-auto text-center">
+            <div className="bg-white/5 p-6 rounded-full inline-block mb-6 border border-white/10 shadow-xl">
+              <MessageSquare size={48} className="text-indigo-400/50" />
+            </div>
+            <h3 className="text-xl font-bold text-slate-300 mb-2">No Room Selected</h3>
+            <p className="text-slate-500 text-sm max-w-xs mx-auto">Select a room from the sidebar or create a new one to start chatting with others.</p>
           </div>
         )}
       </div>
@@ -246,29 +297,46 @@ function ChatRoom({ ws, room, code, username }: { ws: WebSocket | null, room: st
   };
 
   return (
-    <div className="flex flex-col h-full w-full relative">
-      <div className="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center shadow-sm z-10">
+    <>
+      <div className="px-8 py-5 border-b border-white/10 flex justify-between items-center bg-slate-900/40 backdrop-blur-xl z-20">
         <div className="flex items-center gap-4">
-          <h3 className="font-semibold text-lg text-slate-800"># {room}</h3>
-          {code && (
-            <div className="bg-slate-100 text-slate-600 px-3 py-1 rounded-md text-sm font-mono border border-slate-200 flex items-center gap-2" title="Share this code for others to join">
-              Code: <span className="font-bold text-slate-800">{code}</span>
+          <div className="bg-indigo-500/20 p-2 rounded-lg border border-indigo-500/30">
+            <Hash size={20} className="text-indigo-400" />
+          </div>
+          <div>
+            <h3 className="font-bold text-lg text-white leading-none mb-1">{room}</h3>
+            <div className="flex items-center gap-1.5 text-xs font-medium text-slate-400">
+              <Users size={12} className="text-indigo-400" /> {users.length} {users.length === 1 ? 'member' : 'members'} online
             </div>
-          )}
+          </div>
         </div>
-        <div className="flex items-center gap-2 text-sm text-slate-500">
-          <Users size={16} /> {users.length} online
-        </div>
+        
+        {code && (
+          <div className="flex items-center gap-3 bg-slate-900/60 border border-white/10 px-4 py-2 rounded-xl" title="Share this code for others to join">
+            <Key size={14} className="text-purple-400" />
+            <span className="text-xs font-semibold text-slate-400 uppercase tracking-widest">Room Code</span>
+            <span className="font-mono font-bold text-indigo-300 text-sm bg-indigo-500/10 px-2 py-0.5 rounded">{code}</span>
+          </div>
+        )}
       </div>
       
-      <div className="flex-1 overflow-y-auto p-6 space-y-4">
+      <div className="flex-1 overflow-y-auto p-8 space-y-6 relative">
         {messages.map((m, i) => (
           m.type === 'SYS' ? (
-            <div key={i} className="text-center text-xs text-slate-400 my-2">{m.content}</div>
+            <div key={i} className="flex justify-center my-4">
+              <div className="bg-white/5 border border-white/10 px-4 py-1.5 rounded-full text-xs font-medium text-slate-400 flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+                {m.content}
+              </div>
+            </div>
           ) : (
-            <div key={i} className={`flex flex-col max-w-lg ${m.sender === username ? 'ml-auto items-end' : 'mr-auto items-start'}`}>
-              <span className="text-xs text-slate-500 mb-1 mx-1">{m.sender}</span>
-              <div className={`px-4 py-2 rounded-2xl ${m.sender === username ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-white border border-slate-200 text-slate-800 rounded-tl-none shadow-sm'}`}>
+            <div key={i} className={`flex flex-col max-w-[75%] ${m.sender === username ? 'ml-auto items-end' : 'mr-auto items-start'}`}>
+              <span className="text-[11px] font-semibold text-slate-500 mb-1.5 px-1 tracking-wide">{m.sender}</span>
+              <div className={`px-5 py-3 text-[15px] leading-relaxed shadow-lg ${
+                m.sender === username 
+                  ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white rounded-2xl rounded-tr-sm shadow-indigo-500/20' 
+                  : 'bg-slate-800/80 border border-white/5 text-slate-200 rounded-2xl rounded-tl-sm backdrop-blur-md'
+              }`}>
                 {m.content}
               </div>
             </div>
@@ -277,15 +345,17 @@ function ChatRoom({ ws, room, code, username }: { ws: WebSocket | null, room: st
         <div ref={endRef} />
       </div>
       
-      <div className="p-4 bg-white border-t border-slate-200">
-        <form onSubmit={sendMsg} className="flex gap-2">
-          <input type="text" value={input} onChange={e => setInput(e.target.value)} placeholder="Type a message..." className="flex-1 bg-slate-50 border border-slate-200 rounded-full px-6 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition" />
-          <button type="submit" className="bg-blue-600 text-white rounded-full p-3 hover:bg-blue-700 transition flex items-center justify-center h-12 w-12 shrink-0 shadow-sm">
-            <Send size={20} />
+      <div className="p-6 bg-slate-900/60 backdrop-blur-xl border-t border-white/10">
+        <form onSubmit={sendMsg} className="flex gap-3 relative">
+          <input type="text" value={input} onChange={e => setInput(e.target.value)} placeholder="Message the room..." 
+            className="flex-1 bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-[15px] text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all placeholder:text-slate-500 shadow-inner" />
+          <button type="submit" 
+            className="bg-indigo-500 hover:bg-indigo-400 text-white rounded-2xl px-6 flex items-center justify-center transition-colors shadow-lg shadow-indigo-500/20 group">
+            <Send size={20} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
           </button>
         </form>
       </div>
-    </div>
+    </>
   );
 }
 
