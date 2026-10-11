@@ -5,7 +5,7 @@ import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from database.models import init_db
-from database.crud import get_db, create_user, verify_password, create_room, add_message, get_messages
+from database.crud import get_db, create_user, verify_password, create_room, add_message, get_messages, get_user_by_username
 
 def test_db():
     print("Initializing Database...")

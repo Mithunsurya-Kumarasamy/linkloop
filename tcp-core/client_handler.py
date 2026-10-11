@@ -4,7 +4,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from logger import log
 from protocol import Protocol
-from database.crud import get_db, create_user, get_user_by_username, verify_password, create_room, add_message, get_messages, get_room_by_code, add_user_to_room, get_user_rooms
+from database.crud import get_db, create_user, get_user_by_username, verify_password, create_room, add_message, get_messages, get_room_by_code, add_user_to_room, get_user_rooms, get_room_by_name
 import time
 import string
 import random
@@ -49,7 +49,7 @@ class ClientHandler:
             self.msg_count = 0
             self.last_msg_time = now
         self.msg_count += 1
-        if self.msg_count > 10:
+        if self.msg_count > 5:
             self.send({"type": "ERROR", "message": "Rate limit exceeded"})
             return
 
@@ -64,18 +64,27 @@ class ClientHandler:
             try:
                 if msg_type == "REGISTER":
                     username = msg.get("username")
-                    password = msg.get("password", "default")
+                    password = msg.get("password")
+                    if not password:
+                        self.send({"type": "ERROR", "message": "Password is required"})
+                        return
                     
                     if get_user_by_username(db, username):
                         self.send({"type": "ERROR", "message": "Username taken"})
                     else:
-                        create_user(db, username, password)
-                        if self.room_manager.register_user(username, self):
-                            self.send({"type": "REGISTER_OK"})
+                        user = create_user(db, username, password)
+                        if user:
+                            if self.room_manager.register_user(username, self):
+                                self.send({"type": "REGISTER_OK"})
+                        else:
+                            self.send({"type": "ERROR", "message": "Database error"})
                 
                 elif msg_type == "AUTH":
                     username = msg.get("username")
-                    password = msg.get("password", "default")
+                    password = msg.get("password")
+                    if not password:
+                        self.send({"type": "ERROR", "message": "Password is required"})
+                        return
                     
                     user = get_user_by_username(db, username)
                     if user and verify_password(password, user.password_hash):
@@ -93,7 +102,10 @@ class ClientHandler:
                 elif msg_type == "CREATE_ROOM":
                     room = msg.get("room")
                     code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
-                    create_room(db, room, self.username, code)
+                    db_room = create_room(db, room, self.username, code)
+                    if not db_room:
+                        self.send({"type": "ERROR", "message": "Database error"})
+                        return
                     add_user_to_room(db, self.username, room)
                     if self.room_manager.create_room(room):
                         self.room_manager.join_room(room, self)
@@ -106,14 +118,16 @@ class ClientHandler:
                     user_rooms = get_user_rooms(db, self.username)
                     if room in user_rooms:
                         self.room_manager.join_room(room, self)
-                        self.send({"type": "JOIN_OK", "room": room})
+                        db_r = get_room_by_name(db, room)
+                        r_code = db_r.code if db_r else None
+                        self.send({"type": "JOIN_OK", "room": room, "code": r_code})
+                        
+                        history = get_messages(db, room, limit=20)
+                        for h_msg, h_username in reversed(history):
+                            ts = h_msg.timestamp.isoformat() + "Z" if h_msg.timestamp else None
+                            self.send({"type": "MESSAGE", "room": room, "sender": h_username, "content": h_msg.content, "timestamp": ts, "history": True})
                     else:
                         self.send({"type": "ERROR", "message": "Access denied. Use a join code."})
-                    
-                    history = get_messages(db, room, limit=20)
-                    for h_msg, h_username in reversed(history):
-                        ts = h_msg.timestamp.isoformat() + "Z" if h_msg.timestamp else None
-                        self.send({"type": "MESSAGE", "room": room, "sender": h_username, "content": h_msg.content, "timestamp": ts, "history": True})
 
                 elif msg_type == "JOIN_BY_CODE":
                     code = msg.get("code")
@@ -142,16 +156,27 @@ class ClientHandler:
                     
                 elif msg_type == "LIST_USERS":
                     room = msg.get("room")
+                    user_rooms = get_user_rooms(db, self.username)
+                    if room not in user_rooms:
+                        self.send({"type": "ERROR", "message": "Access denied"})
+                        return
                     users = self.room_manager.list_users(room)
                     self.send({"type": "USER_LIST", "room": room, "users": users})
                     
                 elif msg_type == "MESSAGE":
                     room = msg.get("room") or self.current_room
                     if room:
+                        user_rooms = get_user_rooms(db, self.username)
+                        if room not in user_rooms:
+                            self.send({"type": "ERROR", "message": "Access denied"})
+                            return
                         content = msg.get("content")
                         db_msg = add_message(db, room, self.username, content)
-                        ts = db_msg.timestamp.isoformat() + "Z" if db_msg and db_msg.timestamp else datetime.utcnow().isoformat() + "Z"
-                        self.room_manager.broadcast(room, self.username, content, ts)
+                        if db_msg:
+                            ts = db_msg.timestamp.isoformat() + "Z" if db_msg and db_msg.timestamp else datetime.utcnow().isoformat() + "Z"
+                            self.room_manager.broadcast(room, self.username, content, ts)
+                        else:
+                            self.send({"type": "ERROR", "message": "Failed to send message"})
                     else:
                         self.send({"type": "ERROR", "message": "Not in a room"})
                         
