@@ -54,9 +54,9 @@ Using an AWS EC2 instance, DigitalOcean Droplet, or Hetzner server is the most r
    npm run build
    
    # Run the gateway on port 80 (requires sudo)
-   sudo PORT=80 pm2 start dist/server.js --name gateway
+   sudo PORT=80 pm2 start dist/index.js --name gateway
    ```
-6. **Final Step**: Once your server is running, go back to your Frontend code (`frontend/src/App.tsx`), change the `GATEWAY_URL` to `ws://<YOUR_VPS_IP_ADDRESS>:80`, commit, and Vercel will automatically redeploy!
+6. **Final Step**: Once your server is running, go back to your Frontend code (`frontend/src/App.tsx`), change the `GATEWAY_URL` to `wss://<YOUR_VPS_DOMAIN>`, commit, and Vercel will automatically redeploy! *(Note: Since Vercel serves the frontend over HTTPS, using plain `ws://` with an IP address will be blocked by browsers as mixed content. You must point a domain to your VPS and set up SSL/TLS for the gateway).*
 
 ### Option B: Use Render.com (PaaS) - 100% Free
 If you don't want to manage a Linux server, you can host the entire backend on [Render](https://render.com) for completely free by running both the Python and Node servers in a single Web Service!

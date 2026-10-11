@@ -38,25 +38,31 @@ function App() {
   const [user, setUser] = useState<string | null>(null);
   
   useEffect(() => {
+    let reconnectTimeout: ReturnType<typeof setTimeout>;
+    let activeSocket: WebSocket | null = null;
+
+    const connect = () => {
+      setStatus('CONNECTING');
+      const socket = new WebSocket(GATEWAY_URL);
+      activeSocket = socket;
+      setWs(socket);
+      
+      socket.onopen = () => setStatus('CONNECTED');
+      socket.onclose = () => {
+        setStatus('DISCONNECTED');
+        setUser(null);
+        reconnectTimeout = setTimeout(connect, 3000);
+      };
+      socket.onerror = () => setStatus('ERROR');
+    };
+
     connect();
+
     return () => {
-      if (ws) ws.close();
+      clearTimeout(reconnectTimeout);
+      if (activeSocket) activeSocket.close();
     };
   }, []);
-
-  const connect = () => {
-    setStatus('CONNECTING');
-    const socket = new WebSocket(GATEWAY_URL);
-    
-    socket.onopen = () => setStatus('CONNECTED');
-    socket.onclose = () => {
-      setStatus('DISCONNECTED');
-      setTimeout(connect, 3000);
-    };
-    socket.onerror = () => setStatus('ERROR');
-    
-    setWs(socket);
-  };
 
   return (
     <Router>
