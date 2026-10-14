@@ -4,7 +4,7 @@ echo        Starting LinkLoop Full Stack
 echo ==============================================
 
 echo [1/3] Starting Python TCP Core Backend (Port 9000)...
-start "LinkLoop - TCP Core (Port 9000)" cmd /k "python tcp-core/server.py"
+start "LinkLoop - TCP Core (Port 9000)" cmd /k "if exist .venv\Scripts\python.exe (.venv\Scripts\python.exe tcp-core/server.py) else (python tcp-core/server.py)"
 
 echo [2/3] Starting Node.js WebSocket Gateway (Port 8080)...
 start "LinkLoop - Gateway (Port 8080)" cmd /k "cd gateway && npm start"

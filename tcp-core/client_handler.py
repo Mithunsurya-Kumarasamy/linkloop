@@ -4,7 +4,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from logger import log
 from protocol import Protocol
-from database.crud import get_db, create_user, get_user_by_username, verify_password, create_room, add_message, get_messages, get_room_by_code, add_user_to_room, get_user_rooms, get_room_by_name
+from database.crud import get_db, create_user, get_user_by_username, verify_password, create_room, add_message, get_messages, get_room_by_code, add_user_to_room, remove_user_from_room, get_user_rooms, get_room_by_name
 import time
 import string
 import random
@@ -23,19 +23,20 @@ class ClientHandler:
     def handle(self):
         log.info(f"Connection from {self.address}")
         try:
-            buffer = ""
+            raw_buffer = b""
             while True:
-                data = self.connection.recv(1024)
+                data = self.connection.recv(8192)
                 if not data:
                     break
-                buffer += data.decode('utf-8')
-                if len(buffer) > 8192:
+                raw_buffer += data
+                if len(raw_buffer) > 262144:
                     self.send({"type": "ERROR", "message": "Buffer overflow"})
                     break
-                while '\n' in buffer:
-                    line, buffer = buffer.split('\n', 1)
-                    if line.strip():
-                        self.process_message(line.strip())
+                while b'\n' in raw_buffer:
+                    line_bytes, raw_buffer = raw_buffer.split(b'\n', 1)
+                    line_str = line_bytes.decode('utf-8', errors='replace').strip()
+                    if line_str:
+                        self.process_message(line_str)
         except Exception as e:
             log.error(f"Error with {self.address}: {e}")
         finally:
@@ -49,7 +50,7 @@ class ClientHandler:
             self.msg_count = 0
             self.last_msg_time = now
         self.msg_count += 1
-        if self.msg_count > 5:
+        if self.msg_count > 10:
             self.send({"type": "ERROR", "message": "Rate limit exceeded"})
             return
 
@@ -115,6 +116,8 @@ class ClientHandler:
                         
                 elif msg_type == "JOIN_ROOM":
                     room = msg.get("room")
+                    if self.current_room == room:
+                        return
                     user_rooms = get_user_rooms(db, self.username)
                     if room in user_rooms:
                         self.room_manager.join_room(room, self)
@@ -122,10 +125,10 @@ class ClientHandler:
                         r_code = db_r.code if db_r else None
                         self.send({"type": "JOIN_OK", "room": room, "code": r_code})
                         
-                        history = get_messages(db, room, limit=20)
+                        history = get_messages(db, room, limit=50)
                         for h_msg, h_username in reversed(history):
                             ts = h_msg.timestamp.isoformat() + "Z" if h_msg.timestamp else None
-                            self.send({"type": "MESSAGE", "room": room, "sender": h_username, "content": h_msg.content, "timestamp": ts, "history": True})
+                            self.send({"type": "MESSAGE", "id": h_msg.id, "room": room, "sender": h_username, "content": h_msg.content, "timestamp": ts, "history": True})
                     else:
                         self.send({"type": "ERROR", "message": "Access denied. Use a join code."})
 
@@ -134,21 +137,27 @@ class ClientHandler:
                     db_room = get_room_by_code(db, code)
                     if db_room:
                         room = db_room.name
+                        if self.current_room == room:
+                            return
                         add_user_to_room(db, self.username, room)
                         self.room_manager.join_room(room, self)
                         self.send({"type": "JOIN_OK", "room": room, "code": code})
                         
-                        history = get_messages(db, room, limit=20)
+                        history = get_messages(db, room, limit=50)
                         for h_msg, h_username in reversed(history):
                             ts = h_msg.timestamp.isoformat() + "Z" if h_msg.timestamp else None
-                            self.send({"type": "MESSAGE", "room": room, "sender": h_username, "content": h_msg.content, "timestamp": ts, "history": True})
+                            self.send({"type": "MESSAGE", "id": h_msg.id, "room": room, "sender": h_username, "content": h_msg.content, "timestamp": ts, "history": True})
                     else:
                         self.send({"type": "ERROR", "message": "Invalid room code"})
                         
                 elif msg_type == "LEAVE_ROOM":
-                    room = msg.get("room")
-                    self.room_manager.leave_room(room, self)
-                    self.send({"type": "LEAVE_OK", "room": room})
+                    room = msg.get("room") or self.current_room
+                    if room:
+                        remove_user_from_room(db, self.username, room)
+                        self.room_manager.leave_room(room, self)
+                        self.send({"type": "LEAVE_OK", "room": room})
+                        rooms = get_user_rooms(db, self.username)
+                        self.send({"type": "ROOM_LIST", "rooms": rooms})
                     
                 elif msg_type == "LIST_ROOMS":
                     rooms = get_user_rooms(db, self.username)
@@ -171,10 +180,12 @@ class ClientHandler:
                             self.send({"type": "ERROR", "message": "Access denied"})
                             return
                         content = msg.get("content")
+                        if not content:
+                            return
                         db_msg = add_message(db, room, self.username, content)
                         if db_msg:
                             ts = db_msg.timestamp.isoformat() + "Z" if db_msg and db_msg.timestamp else datetime.utcnow().isoformat() + "Z"
-                            self.room_manager.broadcast(room, self.username, content, ts)
+                            self.room_manager.broadcast(room, self.username, content, ts, msg_id=db_msg.id)
                         else:
                             self.send({"type": "ERROR", "message": "Failed to send message"})
                     else:

@@ -1,6 +1,6 @@
 import json
 
-MAX_MESSAGE_SIZE = 4096
+MAX_MESSAGE_SIZE = 65536
 
 class Protocol:
     @staticmethod

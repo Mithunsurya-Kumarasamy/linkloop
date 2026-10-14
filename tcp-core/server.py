@@ -30,6 +30,10 @@ class LinkLoopServer:
         try:
             while True:
                 conn, addr = self.server_socket.accept()
+                try:
+                    conn.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+                except Exception:
+                    pass
                 handler = ClientHandler(conn, addr, self.room_manager)
                 client_thread = threading.Thread(target=handler.handle)
                 client_thread.daemon = True

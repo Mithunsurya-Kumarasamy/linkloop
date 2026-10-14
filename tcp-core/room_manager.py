@@ -35,20 +35,31 @@ class RoomManager:
 
     def join_room(self, room_name, client):
         with self.lock:
+            old_room = client.current_room
+            if old_room and old_room != room_name and old_room in self.rooms:
+                if client in self.rooms[old_room]:
+                    self.rooms[old_room].remove(client)
+                    self._broadcast_internal(old_room, f"{client.username} left the room.", exclude=client)
+            
             if room_name not in self.rooms:
                 self.rooms[room_name] = set()
+            already_in = client in self.rooms[room_name]
             self.rooms[room_name].add(client)
             client.current_room = room_name
-        self._broadcast_internal(room_name, f"{client.username} joined the room.", exclude=client)
-        log.info(f"{client.username} joined room {room_name}")
+
+        if not already_in:
+            self._broadcast_internal(room_name, f"{client.username} joined the room.", exclude=client)
+            log.info(f"{client.username} joined room {room_name}")
         return True
 
     def leave_room(self, room_name, client):
         with self.lock:
             if room_name in self.rooms and client in self.rooms[room_name]:
                 self.rooms[room_name].remove(client)
+            if client.current_room == room_name:
                 client.current_room = None
-        self._broadcast_internal(room_name, f"{client.username} left the room.")
+        self._broadcast_internal(room_name, f"{client.username} left the room.", exclude=client)
+        log.info(f"{client.username} left room {room_name}")
         return True
 
     def list_rooms(self):
@@ -61,13 +72,15 @@ class RoomManager:
                 return [c.username for c in self.rooms[room_name]]
             return []
 
-    def broadcast(self, room_name, sender_username, message, timestamp=None):
+    def broadcast(self, room_name, sender_username, message, timestamp=None, msg_id=None):
         with self.lock:
             if room_name not in self.rooms:
                 return
-            members = self.rooms[room_name]
+            members = list(self.rooms[room_name])
         
         msg_payload = {"type": "MESSAGE", "room": room_name, "sender": sender_username, "content": message}
+        if msg_id is not None:
+            msg_payload["id"] = msg_id
         if timestamp:
             msg_payload["timestamp"] = timestamp
         encoded = Protocol.encode(msg_payload)

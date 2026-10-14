@@ -1,10 +1,12 @@
 import * as net from 'net';
 import { WebSocket } from 'ws';
+import { StringDecoder } from 'string_decoder';
 
 export class TCPClient {
     private client: net.Socket;
     private ws: WebSocket;
     private buffer: string = "";
+    private decoder: StringDecoder = new StringDecoder('utf-8');
 
     constructor(ws: WebSocket, host: string, port: number) {
         this.ws = ws;
@@ -16,7 +18,7 @@ export class TCPClient {
         });
 
         this.client.on('data', (data) => {
-            this.buffer += data.toString('utf-8');
+            this.buffer += this.decoder.write(data);
             let newlineIdx;
             while ((newlineIdx = this.buffer.indexOf('\n')) !== -1) {
                 const line = this.buffer.substring(0, newlineIdx).trim();

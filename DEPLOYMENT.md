@@ -71,3 +71,24 @@ If you don't want to manage a Linux server, you can host the entire backend on [
    * Add `DATABASE_URL` and paste your Neon DB URL.
    * Add `TCP_SERVER_HOST` and set it to `127.0.0.1`.
 5. Update your Vercel Frontend to point to the secure WebSocket (`wss://`) URL provided by Render for your Web Service.
+
+## 4. Keep the Server Active 24/7 (Prevent Sleep with UptimeRobot)
+
+Render's free tier automatically spins down (sleeps) web services after 15 minutes of inactivity, which causes a 50+ second cold start delay on the next visit.
+
+The Gateway now includes a built-in lightweight HTTP health check endpoint (`/health` and `/`) specifically designed for [UptimeRobot](https://uptimerobot.com) to keep the backend awake 24/7 for free:
+
+1. Create a free account at [UptimeRobot](https://uptimerobot.com).
+2. Click **+ Add New Monitor**.
+3. Fill in the details:
+   - **Monitor Type**: `HTTP(s)`
+   - **Friendly Name**: `LinkLoop Backend`
+   - **URL (or IP)**: `https://<YOUR-RENDER-APP-NAME>.onrender.com/health` (or root `https://<YOUR-RENDER-APP-NAME>.onrender.com/`)
+   - **Monitoring Interval**: `5 minutes`
+4. Click **Create Monitor**.
+
+UptimeRobot will send an HTTP ping every 5 minutes and receive an immediate `200 OK`:
+```json
+{ "status": "ok", "service": "linkloop-gateway", "uptime": 1234, "timestamp": "..." }
+```
+This continuous traffic keeps Render's inactivity timer reset, ensuring your backend never sleeps and users experience instant connection every time.

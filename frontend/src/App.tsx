@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate, Navigate } from 'react-router-dom';
-import { Send, Users, LogOut, Hash, Key, ArrowLeft } from 'lucide-react';
+import { Send, Users, LogOut, Hash, Key, ArrowLeft, Copy, Check, ChevronDown, ChevronUp } from 'lucide-react';
 
 const GATEWAY_URL = import.meta.env.VITE_GATEWAY_URL || 'ws://127.0.0.1:8080';
 
@@ -11,17 +11,69 @@ const formatTime = (ts: string) => {
 };
 
 const MessageContent = ({ content }: { content: string }) => {
+  const [expanded, setExpanded] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const isLong = content.length > 800 || (content.match(/\n/g) || []).length > 8;
+
+  const displayContent = isLong && !expanded ? content.slice(0, 500) + '...' : content;
   const urlRegex = /(https?:\/\/[^\s]+)/g;
-  const parts = content.split(urlRegex);
+  const parts = displayContent.split(urlRegex);
+
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(content);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   return (
-    <>
-      {parts.map((part, i) => {
-        if (part.match(urlRegex)) {
-          return <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">{part}</a>;
-        }
-        return <span key={i}>{part}</span>;
-      })}
-    </>
+    <div className="relative group/msg">
+      <div className="whitespace-pre-wrap select-text break-words [overflow-wrap:anywhere]">
+        {parts.map((part, i) => {
+          if (part.match(urlRegex)) {
+            return (
+              <a
+                key={i}
+                href={part}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-400 hover:underline break-all"
+              >
+                {part}
+              </a>
+            );
+          }
+          return <span key={i}>{part}</span>;
+        })}
+      </div>
+      {isLong && (
+        <button
+          type="button"
+          onClick={() => setExpanded(!expanded)}
+          className="mt-2 text-xs font-semibold text-blue-400 hover:text-blue-300 flex items-center gap-1 transition-colors underline cursor-pointer"
+        >
+          {expanded ? (
+            <>
+              <ChevronUp size={12} /> Show less
+            </>
+          ) : (
+            <>
+              <ChevronDown size={12} /> Show full message ({content.length.toLocaleString()} chars)
+            </>
+          )}
+        </button>
+      )}
+      {content.length > 60 && (
+        <button
+          type="button"
+          onClick={copyToClipboard}
+          className="opacity-0 group-hover/msg:opacity-100 transition-opacity absolute -top-2.5 -right-2 bg-[#222222] text-slate-400 hover:text-white p-1 rounded text-[10px] flex items-center gap-1 border border-[#333333] shadow-md z-10"
+          title="Copy full text"
+        >
+          {copied ? <Check size={11} className="text-emerald-400" /> : <Copy size={11} />}
+          <span>{copied ? 'Copied' : 'Copy'}</span>
+        </button>
+      )}
+    </div>
   );
 };
 
@@ -64,35 +116,46 @@ function App() {
     };
   }, []);
 
+  // Ping interval to keep TCP and WebSocket connections hot and avoid sleep drops
+  useEffect(() => {
+    if (!ws || status !== 'CONNECTED') return;
+    const interval = setInterval(() => {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'PING' }));
+      }
+    }, 25000);
+    return () => clearInterval(interval);
+  }, [ws, status]);
+
   return (
     <Router>
-      <div className="min-h-screen bg-black font-sans flex flex-col text-slate-200">
-        <header className="bg-[#111111] border-b border-[#262626] px-6 py-3 flex justify-between items-center z-50">
-          <div className="flex items-center gap-2.5">
+      <div className="h-screen h-[100dvh] w-full bg-black font-sans flex flex-col text-slate-200 overflow-hidden">
+        <header className="bg-[#111111] border-b border-[#262626] px-3 md:px-6 py-2.5 md:py-3 flex justify-between items-center z-50 shrink-0">
+          <div className="flex items-center gap-2">
             <div className="bg-[#0f62fe] p-1.5 rounded">
               <LinkLogo className="text-white w-4 h-4" />
             </div>
-            <h1 className="text-lg font-bold text-white tracking-tight">
+            <h1 className="text-base md:text-lg font-bold text-white tracking-tight">
               LinkLoop
             </h1>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 bg-[#1a1a1a] px-2.5 py-1 rounded-md border border-[#262626]">
+          <div className="flex items-center gap-2 md:gap-4">
+            <div className="flex items-center gap-1.5 md:gap-2 bg-[#1a1a1a] px-2 py-0.5 md:px-2.5 md:py-1 rounded-md border border-[#262626]">
               <div className={`w-2 h-2 rounded-full ${status === 'CONNECTED' ? 'bg-emerald-500' : 'bg-red-500'}`}></div>
-              <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+              <span className="text-[10px] md:text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
                 {status}
               </span>
             </div>
             {user && (
               <>
-                <div className="w-px h-5 bg-[#333333]"></div>
-                <div className="flex items-center gap-3">
-                  <div className="w-7 h-7 rounded-full bg-[#1a1a1a] border border-[#333333] flex items-center justify-center text-xs font-bold text-slate-300 uppercase">
+                <div className="w-px h-4 md:h-5 bg-[#333333]"></div>
+                <div className="flex items-center gap-2 md:gap-3">
+                  <div className="w-6 h-6 md:w-7 md:h-7 rounded-full bg-[#1a1a1a] border border-[#333333] flex items-center justify-center text-[11px] md:text-xs font-bold text-slate-300 uppercase">
                     {user.charAt(0)}
                   </div>
-                  <span className="text-sm font-medium text-slate-300">{user}</span>
+                  <span className="text-xs md:text-sm font-medium text-slate-300 max-w-[70px] sm:max-w-none truncate">{user}</span>
                   <button onClick={() => { setUser(null); ws?.send(JSON.stringify({type: 'DISCONNECT'})); }} className="text-slate-500 hover:text-red-500 transition-colors p-1" title="Log Out">
-                    <LogOut size={16} />
+                    <LogOut size={15} />
                   </button>
                 </div>
               </>
@@ -100,7 +163,7 @@ function App() {
           </div>
         </header>
 
-        <main className="flex-1 flex overflow-hidden">
+        <main className="flex-1 min-h-0 flex flex-col overflow-hidden w-full h-full relative">
           <Routes>
             <Route path="/" element={user ? <Navigate to="/dashboard" /> : <Login ws={ws} setUser={setUser} />} />
             <Route path="/dashboard" element={user ? <Dashboard ws={ws} username={user} /> : <Navigate to="/" />} />
@@ -205,19 +268,34 @@ function Dashboard({ ws, username }: { ws: WebSocket | null, username: string })
     const handler = (ev: MessageEvent) => {
       const data = JSON.parse(ev.data);
       if (data.type === 'ROOM_LIST') {
-        setRooms(data.rooms);
+        setRooms(data.rooms || []);
       } else if (data.type === 'CREATE_OK' || data.type === 'JOIN_OK') {
         setCurrentRoom(data.room);
         setCurrentCode(data.code || null);
+        ws.send(JSON.stringify({ type: 'LIST_ROOMS' }));
+      } else if (data.type === 'LEAVE_OK') {
+        if (currentRoom === data.room) {
+          setCurrentRoom(null);
+          setCurrentCode(null);
+        }
         ws.send(JSON.stringify({ type: 'LIST_ROOMS' }));
       }
     };
     ws.addEventListener('message', handler);
     return () => ws.removeEventListener('message', handler);
-  }, [ws]);
+  }, [ws, currentRoom]);
 
   const joinRoom = (room: string) => {
+    if (room === currentRoom) return;
     ws?.send(JSON.stringify({ type: 'JOIN_ROOM', room }));
+  };
+
+  const leaveRoom = (room: string) => {
+    ws?.send(JSON.stringify({ type: 'LEAVE_ROOM', room }));
+    if (currentRoom === room) {
+      setCurrentRoom(null);
+      setCurrentCode(null);
+    }
   };
 
   const createRoom = (e: React.FormEvent) => {
@@ -237,10 +315,10 @@ function Dashboard({ ws, username }: { ws: WebSocket | null, username: string })
   };
 
   return (
-    <div className="flex w-full h-full overflow-hidden">
+    <div className="flex w-full h-full min-h-0 flex-1 overflow-hidden">
       {/* Sidebar */}
-      <div className={`${currentRoom ? 'hidden md:flex' : 'flex'} w-full md:w-[280px] bg-black border-r border-[#262626] flex-col shrink-0`}>
-        <div className="p-4">
+      <div className={`${currentRoom ? 'hidden md:flex' : 'flex'} w-full md:w-[280px] bg-black border-r border-[#262626] flex-col shrink-0 h-full min-h-0`}>
+        <div className="p-4 shrink-0">
           <h2 className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-3">Workspaces</h2>
           
           <form onSubmit={createRoom} className="mb-2">
@@ -260,15 +338,15 @@ function Dashboard({ ws, username }: { ws: WebSocket | null, username: string })
           </form>
         </div>
         
-        <div className="flex-1 overflow-y-auto px-3 py-2 space-y-0.5">
+        <div className="flex-1 min-h-0 overflow-y-auto px-3 py-2 space-y-0.5">
           {rooms.map(r => (
             <button key={r} onClick={() => joinRoom(r)} 
               className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2.5
                 ${currentRoom === r 
-                  ? 'bg-[#0f62fe]/10 text-[#0f62fe]' 
+                  ? 'bg-[#0f62fe]/10 text-[#0f62fe] font-semibold' 
                   : 'text-slate-400 hover:bg-[#111111] hover:text-slate-200'}`}>
               <Hash size={14} className={currentRoom === r ? 'text-[#0f62fe]' : 'text-slate-500'} />
-              {r}
+              <span className="truncate">{r}</span>
             </button>
           ))}
           {rooms.length === 0 && (
@@ -278,9 +356,18 @@ function Dashboard({ ws, username }: { ws: WebSocket | null, username: string })
       </div>
 
       {/* Chat Area */}
-      <div className={`${!currentRoom ? 'hidden md:flex' : 'flex'} flex-1 bg-[#111111] flex-col relative overflow-hidden`}>
-        {currentRoom ? <ChatRoom ws={ws} room={currentRoom} code={currentCode} username={username} onBack={() => setCurrentRoom(null)} /> : (
-          <div className="m-auto text-center max-w-md">
+      <div className={`${!currentRoom ? 'hidden md:flex' : 'flex'} flex-1 h-full min-h-0 bg-[#111111] flex flex-col relative overflow-hidden`}>
+        {currentRoom ? (
+          <ChatRoom 
+            ws={ws} 
+            room={currentRoom} 
+            code={currentCode} 
+            username={username} 
+            onBack={() => setCurrentRoom(null)} 
+            onLeave={leaveRoom}
+          />
+        ) : (
+          <div className="m-auto text-center max-w-md p-6">
             <div className="bg-black w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-[#262626]">
               <LinkLogo className="text-slate-600 w-8 h-8" />
             </div>
@@ -293,11 +380,27 @@ function Dashboard({ ws, username }: { ws: WebSocket | null, username: string })
   );
 }
 
-function ChatRoom({ ws, room, code, username, onBack }: { ws: WebSocket | null, room: string, code: string | null, username: string, onBack: () => void }) {
+function ChatRoom({ 
+  ws, 
+  room, 
+  code, 
+  username, 
+  onBack, 
+  onLeave 
+}: { 
+  ws: WebSocket | null, 
+  room: string, 
+  code: string | null, 
+  username: string, 
+  onBack: () => void,
+  onLeave: (room: string) => void
+}) {
   const [messages, setMessages] = useState<any[]>([]);
   const [users, setUsers] = useState<string[]>([]);
   const [input, setInput] = useState('');
+  const [copiedCode, setCopiedCode] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     setMessages([]);
@@ -307,12 +410,20 @@ function ChatRoom({ ws, room, code, username, onBack }: { ws: WebSocket | null, 
     const handler = (ev: MessageEvent) => {
       const data = JSON.parse(ev.data);
       if (data.type === 'MESSAGE' && data.room === room) {
-        setMessages(prev => [...prev, data]);
+        setMessages(prev => {
+          if (data.id && prev.some(m => m.id === data.id)) return prev;
+          if (prev.some(m => m.sender === data.sender && m.content === data.content && m.timestamp === data.timestamp)) return prev;
+          return [...prev, data];
+        });
       } else if (data.type === 'NOTIFICATION' && data.room === room) {
-        setMessages(prev => [...prev, { type: 'SYS', content: data.content }]);
+        setMessages(prev => {
+          const last = prev[prev.length - 1];
+          if (last && last.type === 'SYS' && last.content === data.content) return prev;
+          return [...prev, { type: 'SYS', content: data.content }];
+        });
         ws.send(JSON.stringify({ type: 'LIST_USERS', room }));
       } else if (data.type === 'USER_LIST' && data.room === room) {
-        setUsers(data.users);
+        setUsers(data.users || []);
       }
     };
     ws.addEventListener('message', handler);
@@ -323,55 +434,108 @@ function ChatRoom({ ws, room, code, username, onBack }: { ws: WebSocket | null, 
     endRef.current?.scrollIntoView({ behavior: 'auto' });
   }, [messages]);
 
-  const sendMsg = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInput(e.target.value);
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 160)}px`;
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMsg();
+    }
+  };
+
+  const sendMsg = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (input.trim() && ws) {
       ws.send(JSON.stringify({ type: 'MESSAGE', room, content: input.trim() }));
       setInput('');
+      if (textareaRef.current) {
+        textareaRef.current.style.height = 'auto';
+      }
     }
   };
 
   return (
-    <>
-      <div className="px-4 py-3 md:px-6 md:py-4 border-b border-[#262626] flex justify-between items-center bg-[#111111] z-20 shadow-sm shrink-0">
-        <div className="flex items-center gap-2 md:gap-3">
-          <button onClick={onBack} className="md:hidden text-slate-400 hover:text-white transition-colors mr-1">
-            <ArrowLeft size={20} />
+    <div className="flex flex-col h-full w-full min-h-0 overflow-hidden">
+      <div className="px-3 py-2.5 md:px-6 md:py-3.5 border-b border-[#262626] flex justify-between items-center bg-[#111111] z-20 shadow-sm shrink-0 gap-2">
+        <div className="flex items-center gap-2 md:gap-3 min-w-0 flex-1">
+          <button 
+            onClick={onBack} 
+            className="text-slate-400 hover:text-white transition-colors p-1.5 -ml-1 rounded-md hover:bg-[#1a1a1a] shrink-0 touch-manipulation" 
+            title="Return to channel list"
+          >
+            <ArrowLeft size={18} />
           </button>
-          <div className="bg-[#1a1a1a] p-1.5 rounded text-slate-400">
-            <Hash size={16} />
+          <div className="bg-[#1a1a1a] p-1.5 rounded text-slate-400 shrink-0 hidden sm:block">
+            <Hash size={15} />
           </div>
-          <div>
-            <h3 className="font-bold text-[15px] text-white leading-tight">{room}</h3>
-            <div className="flex items-center gap-1.5 text-[11px] font-medium text-slate-400 mt-0.5">
-              <Users size={10} /> {users.length} {users.length === 1 ? 'member' : 'members'} online
+          <div className="min-w-0 flex-1">
+            <h3 className="font-bold text-sm md:text-[15px] text-white leading-tight truncate">{room}</h3>
+            <div className="flex items-center gap-1 text-[10px] md:text-[11px] font-medium text-slate-400 mt-0.5">
+              <Users size={10} /> <span>{users.length} {users.length === 1 ? 'member' : 'members'} online</span>
             </div>
           </div>
         </div>
         
-        {code && (
-          <div className="flex items-center gap-2 bg-[#1a1a1a] px-3 py-1.5 rounded-md border border-[#262626]" title="Share this code for others to join">
-            <Key size={12} className="text-slate-400" />
-            <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Join Code:</span>
-            <span className="font-mono font-bold text-slate-200 text-xs bg-[#262626] px-1.5 py-0.5 border border-[#333333] rounded">{code}</span>
-          </div>
-        )}
+        <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
+          {code && (
+            <div className="flex items-center gap-1 md:gap-1.5 bg-[#1a1a1a] px-2 py-1 md:px-2.5 md:py-1.5 rounded-md border border-[#262626]" title="Share this code for others to join">
+              <Key size={11} className="text-slate-400 hidden sm:inline" />
+              <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide hidden sm:inline">Code:</span>
+              <span className="font-mono font-bold text-slate-200 text-[11px] md:text-xs bg-[#262626] px-1.5 py-0.5 border border-[#333333] rounded select-all">{code}</span>
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(code);
+                  setCopiedCode(true);
+                  setTimeout(() => setCopiedCode(false), 2000);
+                }}
+                className="text-slate-400 hover:text-white transition-colors p-0.5 touch-manipulation"
+                title="Copy code"
+              >
+                {copiedCode ? <Check size={11} className="text-emerald-400" /> : <Copy size={11} />}
+              </button>
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={() => {
+              if (window.confirm(`Leave #${room}? You will be removed from this channel.`)) {
+                onLeave(room);
+              }
+            }}
+            className="flex items-center gap-1 md:gap-1.5 px-2 md:px-2.5 py-1 md:py-1.5 rounded-md text-xs font-semibold text-red-400 bg-red-950/20 border border-red-900/40 hover:bg-red-900/40 hover:text-red-300 transition-colors shadow-sm cursor-pointer shrink-0 touch-manipulation"
+            title="Leave this room"
+          >
+            <LogOut size={12} className="rotate-180" />
+            <span className="hidden sm:inline">Leave Room</span>
+          </button>
+        </div>
       </div>
       
-      <div className="flex-1 overflow-y-auto p-6 space-y-5">
+      <div className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-4 md:p-6 space-y-3.5 md:space-y-4">
         {messages.map((m, i) => {
           const isMe = m.sender === username;
+          const msgKey = m.id ? `msg-${m.id}` : `${m.type}-${m.sender || 'sys'}-${m.timestamp || i}-${i}`;
           return m.type === 'SYS' ? (
-            <div key={i} className="flex justify-center my-4">
-              <span className="text-[11px] font-medium text-slate-400 bg-[#1a1a1a] px-3 py-1 rounded-full border border-[#262626]">{m.content}</span>
+            <div key={msgKey} className="flex justify-center my-2.5">
+              <span className="text-[10.5px] md:text-[11px] font-medium text-slate-400 bg-[#1a1a1a] px-3 py-1 rounded-full border border-[#262626] shadow-sm">
+                {m.content}
+              </span>
             </div>
           ) : (
-            <div key={i} className={`flex flex-col max-w-[70%] ${isMe ? 'ml-auto items-end' : 'mr-auto items-start'}`}>
-              <div className="flex items-baseline gap-2 mb-1 px-1">
-                <span className="text-xs font-semibold text-slate-400">{m.sender}</span>
+            <div key={msgKey} className={`flex flex-col max-w-[88%] md:max-w-[75%] ${isMe ? 'ml-auto items-end' : 'mr-auto items-start'}`}>
+              <div className="flex items-baseline gap-1.5 mb-1 px-1">
+                <span className="text-[11px] md:text-xs font-semibold text-slate-400">{m.sender}</span>
                 {m.timestamp && <span className="text-[9px] text-[#52525b]">{formatTime(m.timestamp)}</span>}
               </div>
-              <div className={`px-4 py-2.5 text-[14px] leading-relaxed shadow-sm break-words ${
+              <div className={`px-3.5 py-2 md:px-4 md:py-2.5 text-[13.5px] md:text-[14px] leading-relaxed shadow-sm break-words ${
                 isMe 
                   ? 'bg-[#0f62fe] text-white rounded-2xl rounded-tr-sm' 
                   : 'bg-[#1a1a1a] border border-[#262626] text-slate-200 rounded-2xl rounded-tl-sm'
@@ -379,22 +543,35 @@ function ChatRoom({ ws, room, code, username, onBack }: { ws: WebSocket | null, 
                 <MessageContent content={m.content} />
               </div>
             </div>
-          )
+          );
         })}
         <div ref={endRef} />
       </div>
       
-      <div className="p-4 bg-[#111111] border-t border-[#262626]">
-        <form onSubmit={sendMsg} className="flex gap-2 max-w-4xl mx-auto">
-          <input type="text" value={input} onChange={e => setInput(e.target.value)} placeholder={`Message #${room}`} 
-            className="input-field flex-1 rounded-md px-4 py-2.5 text-sm transition-colors shadow-sm" />
-          <button type="submit" 
-            className="bg-[#0f62fe] hover:bg-blue-600 text-white rounded-md px-5 flex items-center justify-center transition-colors shadow-sm">
+      <div className="p-2.5 sm:p-3 md:p-4 pb-[max(0.65rem,env(safe-area-inset-bottom))] bg-[#111111] border-t border-[#262626] shrink-0 mt-auto">
+        <form onSubmit={sendMsg} className="flex items-end gap-2 max-w-4xl mx-auto">
+          <div className="flex-1 relative">
+            <textarea
+              ref={textareaRef}
+              rows={1}
+              value={input}
+              onChange={handleInputChange}
+              onKeyDown={handleKeyDown}
+              placeholder={`Message #${room} (Enter to send, Shift+Enter for new line)`}
+              className="input-field w-full rounded-md px-3.5 py-2 md:py-2.5 text-[16px] sm:text-sm transition-colors shadow-sm resize-none overflow-y-auto max-h-36 leading-relaxed block"
+            />
+          </div>
+          <button 
+            type="submit" 
+            disabled={!input.trim()}
+            className="bg-[#0f62fe] hover:bg-blue-600 disabled:opacity-40 disabled:hover:bg-[#0f62fe] text-white rounded-md p-2.5 sm:px-4 md:px-5 min-h-[42px] min-w-[42px] flex items-center justify-center transition-colors shadow-sm shrink-0 active:scale-95 touch-manipulation"
+            title="Send message"
+          >
             <Send size={18} />
           </button>
         </form>
       </div>
-    </>
+    </div>
   );
 }
 

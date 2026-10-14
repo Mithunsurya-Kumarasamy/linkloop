@@ -64,6 +64,17 @@ def add_user_to_room(db: Session, username: str, room_name: str):
             return True
     return False
 
+def remove_user_from_room(db: Session, username: str, room_name: str):
+    user = get_user_by_username(db, username)
+    room = get_room_by_name(db, room_name)
+    if user and room:
+        member = db.query(RoomMember).filter_by(user_id=user.id, room_id=room.id).first()
+        if member:
+            db.delete(member)
+            db.commit()
+            return True
+    return False
+
 def get_user_rooms(db: Session, username: str):
     user = get_user_by_username(db, username)
     if not user:
