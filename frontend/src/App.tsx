@@ -11,12 +11,12 @@ const formatTime = (ts: string) => {
   return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 };
 
-const MessageContent = ({ content }: { content: string }) => {
+const MessageContent = ({ content, isMe }: { content: string; isMe?: boolean }) => {
   const [expanded, setExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
-  const isLong = content.length > 800 || (content.match(/\n/g) || []).length > 8;
+  const isLong = content.length > 400 || (content.match(/\n/g) || []).length > 6;
 
-  const displayContent = isLong && !expanded ? content.slice(0, 500) + '...' : content;
+  const displayContent = isLong && !expanded ? content.slice(0, 300) + '...' : content;
   const urlRegex = /(https?:\/\/[^\s]+)/g;
   const parts = displayContent.split(urlRegex);
 
@@ -27,8 +27,8 @@ const MessageContent = ({ content }: { content: string }) => {
   };
 
   return (
-    <div className="relative group/msg">
-      <div className="whitespace-pre-wrap select-text break-words [overflow-wrap:anywhere]">
+    <div className="relative group/msg min-w-0 max-w-full">
+      <div className={`whitespace-pre-wrap select-text break-all [word-break:break-all] [overflow-wrap:anywhere] text-[13.5px] md:text-[14px] leading-relaxed ${expanded ? 'max-h-80 overflow-y-auto pr-1' : ''}`}>
         {parts.map((part, i) => {
           if (part.match(urlRegex)) {
             return (
@@ -37,7 +37,7 @@ const MessageContent = ({ content }: { content: string }) => {
                 href={part}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-blue-400 hover:underline break-all"
+                className={`${isMe ? 'text-blue-100 underline hover:text-white' : 'text-blue-400 underline hover:text-blue-300'} break-all`}
               >
                 {part}
               </a>
@@ -50,7 +50,9 @@ const MessageContent = ({ content }: { content: string }) => {
         <button
           type="button"
           onClick={() => setExpanded(!expanded)}
-          className="mt-2 text-xs font-semibold text-blue-400 hover:text-blue-300 flex items-center gap-1 transition-colors underline cursor-pointer"
+          className={`mt-2 text-xs font-semibold flex items-center gap-1 transition-colors underline cursor-pointer ${
+            isMe ? 'text-blue-100 hover:text-white' : 'text-blue-400 hover:text-blue-300'
+          }`}
         >
           {expanded ? (
             <>
@@ -67,7 +69,7 @@ const MessageContent = ({ content }: { content: string }) => {
         <button
           type="button"
           onClick={copyToClipboard}
-          className="opacity-0 group-hover/msg:opacity-100 transition-opacity absolute -top-2.5 -right-2 bg-[#222222] text-slate-400 hover:text-white p-1 rounded text-[10px] flex items-center gap-1 border border-[#333333] shadow-md z-10"
+          className="opacity-0 group-hover/msg:opacity-100 transition-opacity absolute -top-2.5 -right-2 bg-[#222222] text-slate-400 hover:text-white p-1 rounded text-[10px] flex items-center gap-1 border border-[#333333] shadow-md z-10 cursor-pointer"
           title="Copy full text"
         >
           {copied ? <Check size={11} className="text-emerald-400" /> : <Copy size={11} />}
@@ -547,7 +549,7 @@ function ChatRoom({
         </div>
       </div>
       
-      <div className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-4 md:p-6 space-y-3.5 md:space-y-4">
+      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-3 sm:p-4 md:p-6 space-y-3.5 md:space-y-4">
         {messages.map((m, i) => {
           const isMe = m.sender === username;
           const msgKey = m.id ? `msg-${m.id}` : `${m.type}-${m.sender || 'sys'}-${m.timestamp || i}-${i}`;
@@ -558,17 +560,17 @@ function ChatRoom({
               </span>
             </div>
           ) : (
-            <div key={msgKey} className={`flex flex-col max-w-[88%] md:max-w-[75%] ${isMe ? 'ml-auto items-end' : 'mr-auto items-start'}`}>
+            <div key={msgKey} className={`flex flex-col min-w-0 max-w-[85%] md:max-w-[75%] ${isMe ? 'ml-auto items-end' : 'mr-auto items-start'}`}>
               <div className="flex items-baseline gap-1.5 mb-1 px-1">
                 <span className="text-[11px] md:text-xs font-semibold text-slate-400">{m.sender}</span>
                 {m.timestamp && <span className="text-[9px] text-[#52525b]">{formatTime(m.timestamp)}</span>}
               </div>
-              <div className={`px-3.5 py-2 md:px-4 md:py-2.5 text-[13.5px] md:text-[14px] leading-relaxed shadow-sm break-words ${
+              <div className={`px-3.5 py-2 md:px-4 md:py-2.5 text-[13.5px] md:text-[14px] leading-relaxed shadow-sm min-w-0 max-w-full break-all [word-break:break-all] [overflow-wrap:anywhere] ${
                 isMe 
                   ? 'bg-[#0f62fe] text-white rounded-2xl rounded-tr-sm' 
                   : 'bg-[#1a1a1a] border border-[#262626] text-slate-200 rounded-2xl rounded-tl-sm'
               }`}>
-                <MessageContent content={m.content} />
+                <MessageContent content={m.content} isMe={isMe} />
               </div>
             </div>
           );
