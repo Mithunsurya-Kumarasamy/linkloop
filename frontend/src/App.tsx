@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate, Navigate } from 'react-router-dom';
-import { Send, Users, LogOut, Hash, Key, ArrowLeft, Copy, Check, ChevronDown, ChevronUp } from 'lucide-react';
+import { Send, Users, LogOut, Hash, Key, ArrowLeft, Copy, Check, ChevronDown, ChevronUp, AlertCircle, Scissors } from 'lucide-react';
 
 const GATEWAY_URL = import.meta.env.VITE_GATEWAY_URL || 'ws://127.0.0.1:8080';
+const MAX_MSG_LENGTH = 60000;
 
 const formatTime = (ts: string) => {
   if (!ts) return '';
@@ -399,8 +400,12 @@ function ChatRoom({
   const [users, setUsers] = useState<string[]>([]);
   const [input, setInput] = useState('');
   const [copiedCode, setCopiedCode] = useState(false);
+  const [errorBanner, setErrorBanner] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const isOverLimit = input.length > MAX_MSG_LENGTH;
+  const charsOver = input.length - MAX_MSG_LENGTH;
 
   useEffect(() => {
     setMessages([]);
@@ -424,6 +429,8 @@ function ChatRoom({
         ws.send(JSON.stringify({ type: 'LIST_USERS', room }));
       } else if (data.type === 'USER_LIST' && data.room === room) {
         setUsers(data.users || []);
+      } else if (data.type === 'ERROR') {
+        setErrorBanner(data.message || 'An error occurred');
       }
     };
     ws.addEventListener('message', handler);
@@ -435,25 +442,46 @@ function ChatRoom({
   }, [messages]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setInput(e.target.value);
+    const val = e.target.value;
+    setInput(val);
+    if (val.length <= MAX_MSG_LENGTH && errorBanner?.includes('exceeds limit')) {
+      setErrorBanner(null);
+    }
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
       textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 160)}px`;
     }
   };
 
+  const handleTrim = () => {
+    setInput(prev => prev.slice(0, MAX_MSG_LENGTH));
+    setErrorBanner(null);
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+    }
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
+      if (isOverLimit) {
+        setErrorBanner(`Message limit exceeded by ${charsOver.toLocaleString()} characters! You cannot send this message. Please trim the message.`);
+        return;
+      }
       sendMsg();
     }
   };
 
   const sendMsg = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
+    if (isOverLimit) {
+      setErrorBanner(`Message limit exceeded by ${charsOver.toLocaleString()} characters! You cannot send this message. Please trim the message.`);
+      return;
+    }
     if (input.trim() && ws) {
       ws.send(JSON.stringify({ type: 'MESSAGE', room, content: input.trim() }));
       setInput('');
+      setErrorBanner(null);
       if (textareaRef.current) {
         textareaRef.current.style.height = 'auto';
       }
@@ -549,6 +577,50 @@ function ChatRoom({
       </div>
       
       <div className="p-2.5 sm:p-3 md:p-4 pb-[max(0.65rem,env(safe-area-inset-bottom))] bg-[#111111] border-t border-[#262626] shrink-0 mt-auto">
+        {(isOverLimit || errorBanner) && (
+          <div className="max-w-4xl mx-auto mb-2.5 p-2.5 sm:p-3 rounded-lg bg-red-950/80 border border-red-500/70 text-red-200 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 shadow-lg">
+            <div className="flex items-start sm:items-center gap-2 min-w-0">
+              <AlertCircle size={16} className="text-red-400 shrink-0 mt-0.5 sm:mt-0" />
+              <span className="font-medium text-red-200 leading-snug">
+                {isOverLimit 
+                  ? `Message limit exceeded by ${charsOver.toLocaleString()} characters! You cannot send this message. Please trim the message.` 
+                  : errorBanner}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+              {isOverLimit && (
+                <button
+                  type="button"
+                  onClick={handleTrim}
+                  className="px-2.5 py-1.5 bg-red-600 hover:bg-red-500 active:bg-red-700 text-white rounded-md text-xs font-semibold shrink-0 transition-colors flex items-center gap-1.5 shadow cursor-pointer touch-manipulation"
+                  title="Trim message to exactly 60,000 characters"
+                >
+                  <Scissors size={13} />
+                  <span>Trim message</span>
+                </button>
+              )}
+              {!isOverLimit && errorBanner && (
+                <button
+                  type="button"
+                  onClick={() => setErrorBanner(null)}
+                  className="text-red-300 hover:text-white text-xs px-2 py-1 rounded bg-red-900/40 hover:bg-red-900/80 transition-colors"
+                >
+                  Dismiss
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {input.length > 1000 && (
+          <div className="flex justify-end max-w-4xl mx-auto px-1 mb-1">
+            <span className={`text-[11px] font-mono font-medium ${isOverLimit ? 'text-red-400 font-bold' : input.length > 50000 ? 'text-amber-400' : 'text-slate-500'}`}>
+              {input.length.toLocaleString()} / {MAX_MSG_LENGTH.toLocaleString()} characters
+              {isOverLimit && ` (${charsOver.toLocaleString()} over limit)`}
+            </span>
+          </div>
+        )}
+
         <form onSubmit={sendMsg} className="flex items-end gap-2 max-w-4xl mx-auto">
           <div className="flex-1 relative">
             <textarea
@@ -557,15 +629,23 @@ function ChatRoom({
               value={input}
               onChange={handleInputChange}
               onKeyDown={handleKeyDown}
-              placeholder={`Message #${room} (Enter to send, Shift+Enter for new line)`}
-              className="input-field w-full rounded-md px-3.5 py-2 md:py-2.5 text-[16px] sm:text-sm transition-colors shadow-sm resize-none overflow-y-auto max-h-36 leading-relaxed block"
+              placeholder={isOverLimit ? "Message exceeds limit! Please trim your message to send." : `Message #${room} (Enter to send, Shift+Enter for new line)`}
+              className={`input-field w-full rounded-md px-3.5 py-2 md:py-2.5 text-[16px] sm:text-sm transition-colors shadow-sm resize-none overflow-y-auto max-h-36 leading-relaxed block ${
+                isOverLimit 
+                  ? 'border-red-500 focus:border-red-500 ring-1 ring-red-500/70 bg-red-950/20 text-red-100 placeholder:text-red-400/70' 
+                  : ''
+              }`}
             />
           </div>
           <button 
             type="submit" 
-            disabled={!input.trim()}
-            className="bg-[#0f62fe] hover:bg-blue-600 disabled:opacity-40 disabled:hover:bg-[#0f62fe] text-white rounded-md p-2.5 sm:px-4 md:px-5 min-h-[42px] min-w-[42px] flex items-center justify-center transition-colors shadow-sm shrink-0 active:scale-95 touch-manipulation"
-            title="Send message"
+            disabled={!input.trim() || isOverLimit}
+            className={`rounded-md p-2.5 sm:px-4 md:px-5 min-h-[42px] min-w-[42px] flex items-center justify-center transition-colors shadow-sm shrink-0 active:scale-95 touch-manipulation ${
+              isOverLimit 
+                ? 'bg-red-900/40 border border-red-700/50 text-red-400 opacity-60 cursor-not-allowed' 
+                : 'bg-[#0f62fe] hover:bg-blue-600 disabled:opacity-40 disabled:hover:bg-[#0f62fe] disabled:cursor-not-allowed text-white cursor-pointer'
+            }`}
+            title={isOverLimit ? `Cannot send: message exceeds limit by ${charsOver.toLocaleString()} characters. Please trim your message.` : 'Send message'}
           >
             <Send size={18} />
           </button>

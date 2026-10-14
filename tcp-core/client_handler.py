@@ -182,6 +182,10 @@ class ClientHandler:
                         content = msg.get("content")
                         if not content:
                             return
+                        if len(content) > 60000:
+                            excess = len(content) - 60000
+                            self.send({"type": "ERROR", "message": f"Message exceeds limit by {excess} characters. Please trim your message to send."})
+                            return
                         db_msg = add_message(db, room, self.username, content)
                         if db_msg:
                             ts = db_msg.timestamp.isoformat() + "Z" if db_msg and db_msg.timestamp else datetime.utcnow().isoformat() + "Z"
