@@ -28,7 +28,7 @@ const MessageContent = ({ content, isMe }: { content: string; isMe?: boolean }) 
 
   return (
     <div className="relative group/msg min-w-0 max-w-full">
-      <div className={`whitespace-pre-wrap select-text break-all [word-break:break-all] [overflow-wrap:anywhere] text-[13.5px] md:text-[14px] leading-relaxed ${expanded ? 'max-h-80 overflow-y-auto pr-1' : ''}`}>
+      <div className="whitespace-pre-wrap select-text break-all [word-break:break-all] [overflow-wrap:anywhere] text-[13.5px] md:text-[14px] leading-relaxed">
         {parts.map((part, i) => {
           if (part.match(urlRegex)) {
             return (
@@ -56,11 +56,11 @@ const MessageContent = ({ content, isMe }: { content: string; isMe?: boolean }) 
         >
           {expanded ? (
             <>
-              <ChevronUp size={12} /> Show less
+              <ChevronUp size={13} /> Read less
             </>
           ) : (
             <>
-              <ChevronDown size={12} /> Show full message ({content.length.toLocaleString()} chars)
+              <ChevronDown size={13} /> Read more
             </>
           )}
         </button>
